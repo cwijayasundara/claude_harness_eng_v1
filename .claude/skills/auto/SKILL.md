@@ -161,7 +161,12 @@ All four commands must exit with code 0.
 uv run pytest --cov=src --cov-report=term-missing -q | grep "^TOTAL" | awk '{print $NF}'
 ```
 
-Compare the result with `.claude/state/coverage-baseline.txt`. The new coverage percentage must be greater than or equal to the baseline. If it drops, the gate FAILS — even if all tests pass.
+Compare the result with `.claude/state/coverage-baseline.txt`. The new coverage percentage must be **greater than or equal to the baseline AND >= 80% (hard floor)**. If it drops below either threshold, the gate FAILS — even if all tests pass.
+
+**Coverage policy (ref: "AI is forcing us to write good code" by Steve Krenzel):**
+- **Floor: 80%.** No commit may drop below this. The ratchet gate BLOCKS.
+- **Target: 100%.** Every line the agent wrote must be verified by a test. At 100%, any uncovered line is an unambiguous signal of missing verification.
+- **TDD enforced:** Tests are written BEFORE implementation. The generator and teammates must follow the red-green-refactor cycle: write failing test → implement → verify pass → commit.
 
 ### Gate 4 — Architecture Checks
 

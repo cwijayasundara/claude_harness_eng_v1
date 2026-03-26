@@ -81,10 +81,18 @@ class OrderNotFoundError extends DomainError {
 
 ---
 
-## Testing Rules
+## Testing Rules — TDD Mandatory
 
-1. **Code first, then tests** — implement the feature, then write tests against the public interface.
-2. **100% meaningful coverage** — every branch, every error path. Coverage tools must pass.
+**"Coverage isn't about bug prevention — it's about guaranteeing the agent has double-checked the behavior of every line of code it wrote."** — Steve Krenzel
+
+1. **Tests FIRST, then code (TDD):**
+   - Write a failing test that defines expected behavior
+   - Run it — verify it fails for the right reason
+   - Write the minimum code to make it pass
+   - Run it — verify it passes
+   - Refactor if needed, re-run tests
+   - Commit
+2. **100% meaningful coverage** — every branch, every error path. At 100%, any uncovered line is an immediate signal of missing verification. The ratchet gate BLOCKS below 80%.
 3. **Only mock external boundaries:** databases, third-party APIs, file I/O, clocks.
 4. **Never mock business logic** — if you mock a service to test another service, you are hiding bugs.
 5. **Realistic test data** — use domain-representative values (real-looking emails, valid UUIDs, plausible amounts). Never `"foo"`, `123`, or `"test"`.

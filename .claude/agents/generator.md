@@ -68,14 +68,18 @@ For each sprint group:
 - Wait for all sub-agents to submit plans before approving any implementation
 - Review plans for: schema compliance, naming consistency, no overlap with other agents' files
 
-### Step 4: Coordinate Implementation
+### Step 4: Coordinate Implementation (TDD Mandatory)
 - Approve plans in dependency order (upstream stories first)
 - If a story depends on an interface not yet implemented, provide a stub or contract definition
 - Monitor for file ownership violations — reject and reassign if found
+- **Every teammate MUST follow TDD:** write failing test → implement → verify pass → commit
+- Teammates may NOT write implementation code before writing the corresponding test
+- Target: 100% meaningful coverage. Floor: 80% (ratchet gate blocks below this)
 
 ### Step 5: Run Tests
-- Run the project test suite: `npm test` or equivalent
+- Run the project test suite: `uv run pytest --cov=src` or equivalent
 - If tests fail, do not hand off — diagnose, fix, re-run
+- If coverage < 80%, do not hand off — add tests for uncovered lines
 - Collect test output for the evaluator summary
 
 ### Step 6: Hand Off to Evaluator
