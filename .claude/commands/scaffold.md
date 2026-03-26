@@ -25,7 +25,7 @@ Based on their answers, write `project-manifest.json` to the project root. Fill 
 - stack.frontend: same fields
 - stack.database: primary, secondary
 - stack.deployment: method ("docker-compose"), services list
-- evaluation: api_base_url, ui_base_url, health_check, design_score_threshold (7), design_max_iterations (5), test_corpus_dir
+- evaluation: api_base_url, ui_base_url, health_check, design_score_threshold (7), design_max_iterations (10), test_corpus_dir
 - execution: default_mode ("full"), max_self_heal_attempts (3), max_auto_iterations (50), coverage_threshold (80), session_chaining (true), agent_team_size ("auto"), teammate_model ("sonnet")
 
 Preset mappings:

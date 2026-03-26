@@ -2,7 +2,7 @@
 name: auto
 description: Autonomous build loop with Karpathy ratcheting, GAN evaluator, and session chaining. Iterates story groups until all features pass or stopping criteria met.
 disable-model-invocation: true
-argument-hint: "[--mode full|lean|solo] [--group GROUP_ID]"
+argument-hint: "[--mode full|lean|solo|turbo] [--group GROUP_ID]"
 context: fork
 ---
 
@@ -23,7 +23,7 @@ Autonomous build loop implementing Karpathy's ratcheting pattern with GAN-style 
 /auto --group D
 ```
 
-- `--mode` controls which ratchet gates are enforced. Default: `full`.
+- `--mode` controls which ratchet gates are enforced. Default: `full`. Options: `full`, `lean`, `solo`, `turbo`.
 - `--group` resumes or targets a specific dependency group. If omitted, picks the next unfinished group from the dependency graph.
 
 ### Prerequisites
@@ -142,14 +142,27 @@ The orchestrator and evaluator always use the most capable model available.
 
 After the agent team completes, run the ratchet gate. The ratchet is monotonic: progress never regresses. Six sub-gates, mode-dependent:
 
-| Gate | Full | Lean | Solo |
-|------|------|------|------|
-| 1. Unit tests (pytest, vitest) | Yes | Yes | Yes |
-| 2. Lint + types (ruff, mypy, tsc) | Yes | Yes | Yes |
-| 3. Coverage >= baseline | Yes | Yes | Yes |
-| 4. Architecture (files exist, schema validation) | Yes | Yes | No |
-| 5. Evaluator (API + Playwright vs running Docker) | Yes | Yes | No |
-| 6. Design critic (vision scoring, GAN loop) | Yes | No | No |
+| Gate | Full | Lean | Solo | Turbo |
+|------|------|------|------|-------|
+| 1. Unit tests (pytest, vitest) | Yes | Yes | Yes | Yes (per commit) |
+| 2. Lint + types (ruff, mypy, tsc) | Yes | Yes | Yes | Yes (per commit) |
+| 3. Coverage >= baseline | Yes | Yes | Yes | Yes (per commit) |
+| 4. Architecture (files exist, schema validation) | Yes | Yes | No | Once at end |
+| 5. Evaluator (API + Playwright vs running Docker) | Yes | Yes | No | Once at end |
+| 6. Design critic (vision scoring, GAN loop) | Yes | No | No | Once at end |
+
+### Turbo Mode (for highly capable models)
+
+For builds using Opus 4.6+ where the model can sustain coherence across long tasks:
+- Generator works without story group decomposition — implements all stories sequentially in a single pass
+- Sprint contracts NOT negotiated per-group — one contract for the entire build
+- Evaluator runs ONCE at the end (not per-group)
+- Ratchet gates 1-3 still run after each commit (tests + lint + coverage)
+- Design critic runs once at the end
+- Significantly cheaper (~$30-50) but less incremental verification
+
+Use when: Model is highly capable AND project is well-specified AND you trust the generator to self-correct.
+Do NOT use when: External API integrations, complex multi-service architecture, or first time using the harness.
 
 ### Fast Lane (trivial changes)
 
@@ -340,7 +353,10 @@ Amendments are a signal that the implementation discovered a design gap. They mu
 
 After the main ratchet gate passes, if the current group contains UI stories (stories with `playwright_checks` or `design_checks` in the sprint contract):
 
-### Iteration Loop (Max 5 Iterations)
+### Iteration Loop
+
+- **Full mode:** Max 10 iterations
+- **Lean mode:** N/A (no design critic)
 
 1. **Spawn design-critic:** Navigate to each page listed in the contract's `design_checks`. Take screenshots. Score visual fidelity, layout consistency, spacing, color token usage, and responsive behavior. Return scores and critique text per page.
 
@@ -352,16 +368,24 @@ After the main ratchet gate passes, if the current group contains UI stories (st
    - The design tokens and layout specifications from `specs/design/`.
    - All learned rules.
 
+#### Refine vs. Pivot Decision
+
+Track the average score across iterations. If the score has NOT improved for 2 consecutive iterations:
+- Instruct the generator: "Your current aesthetic direction is not working. Do NOT make incremental tweaks. Instead, pivot to a fundamentally different visual approach — different color palette, different layout structure, different typography choices."
+- This forces the generator to escape local minima rather than polishing a mediocre design.
+
+If the score IS trending upward (even slowly), continue refining the current direction.
+
 4. **Generator iterates on UI code.** The generator edits only the frontend files flagged by the critic.
 
 5. **Re-screenshot, re-score.** Spawn design-critic again on the updated pages.
 
-6. **Repeat** up to 5 total iterations.
+6. **Repeat** up to 10 total iterations (Full mode).
 
-7. **5th iteration still below threshold:**
-   - Log the failure to `.claude/state/failures.md` with all 5 iteration scores and critiques.
+7. **10th iteration still below threshold:**
+   - Log the failure to `.claude/state/failures.md` with all 10 iteration scores and critiques.
    - Extract a learned rule (see SECTION 12).
-   - Escalate to the user: "Design quality for group {group} did not reach threshold after 5 GAN iterations. Scores: [list]. Proceeding to next group."
+   - Escalate to the user: "Design quality for group {group} did not reach threshold after 10 GAN iterations. Scores: [list]. Proceeding to next group."
    - Do NOT revert the code — the ratchet gate already passed. The design issue is cosmetic, not functional.
 
 ---

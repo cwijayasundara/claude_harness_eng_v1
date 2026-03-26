@@ -590,7 +590,7 @@ Generated per project during `/scaffold` or `/brd`. Tells hooks and agents what 
     "ui_base_url": "http://localhost:3000",
     "health_check": "/health",
     "design_score_threshold": 7,
-    "design_max_iterations": 5,
+    "design_max_iterations": 10,
     "test_corpus_dir": "test-corpus/"
   },
   "execution": {
