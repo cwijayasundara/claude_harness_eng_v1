@@ -71,7 +71,7 @@ A three-agent core (Planner, Generator, Evaluator) where:
          |                  |                    |
          v                  v                    v
 +---------------------------------------------------------------------+
-|                   ENFORCEMENT LAYER (11 hooks)                       |
+|                   ENFORCEMENT LAYER (12 hooks)                       |
 |                                                                      |
 |  Security:  scope-directory | protect-env | detect-secrets           |
 |  Quality:   lint-on-save | typecheck | check-function-length         |
