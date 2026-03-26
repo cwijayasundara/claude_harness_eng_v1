@@ -14,6 +14,10 @@ if (!filePath) {
 const filename = path.basename(filePath);
 
 // Match .env, .env.local, .env.production, etc. but NOT .env.example
+if (filename === '.env.example') {
+  process.exit(0);
+}
+
 const envPattern = /^\.env(\..+)?$/;
 
 if (envPattern.test(filename)) {
