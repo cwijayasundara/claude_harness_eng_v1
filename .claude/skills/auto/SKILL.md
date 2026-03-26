@@ -120,6 +120,22 @@ Every teammate prompt must include:
 
 In Solo mode, the generator works directly without spawning a team. It implements all stories sequentially, following the same quality principles and plan-approval workflow.
 
+### Model Tiering (cost optimization)
+
+Use the least powerful model that can handle each role:
+
+| Role | Recommended Model | Why |
+|------|------------------|-----|
+| /auto orchestrator | opus | Judgment, coordination, architectural decisions |
+| Evaluator | opus | Must be skeptical, catch subtle issues |
+| Design critic | opus | Subjective visual judgment |
+| Generator (lead) | sonnet | Coordination, file assignment |
+| Generator teammates | sonnet | Mechanical implementation from specs |
+| Security reviewer | sonnet | Pattern matching against known vulnerabilities |
+
+Configure teammate model in `project-manifest.json` → `execution.teammate_model`.
+The orchestrator and evaluator always use the most capable model available.
+
 ---
 
 ## SECTION 5: Ratchet Gate (Step 5)
@@ -134,6 +150,18 @@ After the agent team completes, run the ratchet gate. The ratchet is monotonic: 
 | 4. Architecture (files exist, schema validation) | Yes | Yes | No |
 | 5. Evaluator (API + Playwright vs running Docker) | Yes | Yes | No |
 | 6. Design critic (vision scoring, GAN loop) | Yes | No | No |
+
+### Fast Lane (trivial changes)
+
+Skip gates 4-6 (architecture, evaluator, design critic) for commits that ONLY contain:
+- Lint/format fixes (ruff auto-fix, eslint --fix)
+- Documentation updates (.md files only)
+- Type annotation fixes (no logic changes)
+- Learned rules updates
+
+Detection: If `git diff --name-only` shows only .md files, or if the commit message starts with `fix: lint` or `docs:`, skip the evaluator. Gates 1-3 (tests + lint + coverage) always run.
+
+This prevents the expensive evaluator from blocking trivial housekeeping changes.
 
 ### Gate 1 — Unit Tests
 
@@ -218,7 +246,7 @@ Do not immediately revert. Attempt targeted self-healing first.
 | Test failure | pytest/vitest assertion error | Fix the production code, NOT the test |
 | Import error | ImportError / ModuleNotFoundError | Fix the import path or `__init__.py` |
 | Coverage drop | Coverage % below baseline | Add tests for the specific uncovered lines |
-| API check fail | HTTP 500/404/wrong schema | Read the error, fix the service or router |
+| API check fail | HTTP 500/404/wrong schema | Read `docker compose logs backend --tail=50`, identify root cause from stack trace, fix service/router |
 | Playwright fail | Element not found / assertion error | Read the selector, fix the component |
 | Design score low | Score below threshold | Apply the critique text, regenerate the UI |
 | Docker fail | Container exit code / won't start | Read `docker compose logs`, fix config or deps |
@@ -271,6 +299,17 @@ docker compose up -d --build
 ```
 
 Wait for the health check to pass before running the evaluator.
+
+### Worktree Isolation (recommended for parallel execution)
+
+When running multiple groups concurrently or when the generator and evaluator need isolation:
+1. Use Claude Code's `--worktree` isolation flag when spawning evaluator agents
+2. Each worktree gets its own Docker stack on different ports
+3. Configure via `project-manifest.json` port overrides
+4. Teardown worktree Docker stack after evaluation completes
+
+This prevents the generator and evaluator from interfering with each other's state.
+For sequential execution (default), a shared Docker stack is fine.
 
 ### Teardown
 

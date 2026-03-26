@@ -99,6 +99,17 @@
             }
           }
         },
+        "performance_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "endpoint": { "type": "string" },
+              "max_response_time_ms": { "type": "number" },
+              "method": { "type": "string", "default": "GET" }
+            }
+          }
+        },
         "architecture_checks": {
           "type": "object",
           "description": "Structural code quality checks",

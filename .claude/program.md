@@ -17,6 +17,7 @@
 - **TDD mandatory:** Write failing tests FIRST, then implement code to make them pass. Never write implementation before tests. Tests define the contract; code fulfills it.
 - **100% meaningful coverage:** Every line of generated code must be covered by tests. Coverage is not about bug prevention — it's about guaranteeing the agent has double-checked the behavior of every line it wrote (ref: "AI is forcing us to write good code" by Steve Krenzel). At 100%, any uncovered line is an immediate, unambiguous signal of missing verification.
 - **Coverage floor: 80%.** The ratchet gate BLOCKS any commit that drops coverage below 80%. Target is 100% — 80% is the absolute minimum, not the goal.
+- **Model tiering:** Use Opus for orchestration/evaluation (judgment tasks), Sonnet for implementation teammates (execution tasks). Configure via project-manifest.json.
 
 ## Stopping Criteria
 

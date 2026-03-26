@@ -98,6 +98,25 @@ For each entry in `api_checks`:
 
 Record each check as PASS or FAIL with the actual vs. expected values.
 
+### Debugging API Failures
+
+Before reporting an API check as FAILED, read the server logs:
+```bash
+docker compose logs backend --tail=50 2>&1
+```
+Include the relevant error from the logs in the failure report. This gives the generator the actual stack trace, not just "got 500 instead of 200."
+
+---
+
+## Performance Checks
+
+For each `performance_checks` entry in the contract:
+```bash
+# Measure response time
+time_ms=$(curl -s -o /dev/null -w "%{time_total}" -X {method} {api_base_url}{endpoint} | awk '{printf "%.0f", $1 * 1000}')
+```
+If `time_ms > max_response_time_ms`, report as WARN (not BLOCK — performance is advisory unless critical).
+
 ---
 
 ## Layer 2 — Playwright Checks
