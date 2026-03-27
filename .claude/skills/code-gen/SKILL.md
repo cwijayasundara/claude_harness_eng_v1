@@ -29,14 +29,22 @@ Reference skill for generator teammates. Read this before writing any code.
 - Use descriptive names that read as a sentence: `validateOrderItems`, `buildPaymentPayload`.
 - Avoid deeply nested control flow — extract branches into named helpers.
 
-### 4. Explicit Error Handling
+### 4. Single Owner for State Mutations
+- Every state-creating operation (DB insert, file write, queue publish) must have exactly ONE call site.
+- If a route handler creates a record, the service it calls must receive the ID — not create a second record.
+- **Anti-pattern:** Route creates Task, then calls `service.start(query)` which also creates a Task → duplicate records.
+- **Correct pattern:** Route creates Task with ID, then calls `service.start(task_id)` which operates on the existing record.
+- When a background task or async flow needs a resource, pass the ID, don't re-create it.
+- Test this explicitly: after calling the endpoint, assert the exact count of records created (e.g., `assert db.query(Task).count() == 1`).
+
+### 5. Explicit Error Handling
 - Define typed error classes per domain (e.g., `class OrderNotFoundError extends AppError`).
 - Never use bare `except Exception` or `catch (e: any)`.
 - All error paths must be covered by tests.
 - Propagate errors up with context; do not swallow silently.
 - In TypeScript: use `Result<T, E>` or typed throws with JSDoc `@throws`.
 
-### 5. No Dead Code
+### 6. No Dead Code
 - Every line of code must trace to a user story or a technical requirement.
 - Do not leave commented-out code in PRs.
 - Remove unused imports, variables, and parameters immediately.
@@ -104,6 +112,7 @@ class OrderNotFoundError extends DomainError {
 6. **Use async-compatible connection strings:** When using async frameworks (SQLAlchemy async, asyncpg), defaults must use the async driver scheme (e.g., `postgresql+asyncpg://` not `postgresql://`). The sync scheme will fail at runtime with a cryptic driver error.
 5. **Realistic test data** — use domain-representative values (real-looking emails, valid UUIDs, plausible amounts). Never `"foo"`, `123`, or `"test"`.
 6. Test names describe behavior: `"returns 404 when order does not exist"`, not `"test order"`.
+7. **Integration tests for multi-step flows:** When a route triggers a background task or async flow (e.g., POST creates a record then starts processing), write a test that calls the endpoint and asserts the FINAL state — not just that each unit works alone. Assert exact record counts: `assert db.query(Task).count() == 1` after one API call.
 
 ---
 
@@ -398,3 +407,4 @@ Rules:
 - **Magic numbers** — All thresholds, limits, timeouts, and configuration belong in `config.yml`.
 - **.env leaking into tests** — Tests that validate "missing config raises error" will pass in CI but fail locally if `.env` has the value. Always pass `_env_file=None` in pydantic-settings tests.
 - **Sync DB driver in async app** — `postgresql://` uses psycopg2 (sync). Async SQLAlchemy needs `postgresql+asyncpg://`. Always match the driver scheme to the engine type.
+- **Duplicate record creation** — Route creates a record, then calls a service that creates the same record again. Pass the ID, don't re-create. Test with `assert count == 1` after one API call.
