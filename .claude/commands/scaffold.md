@@ -9,13 +9,21 @@ When the user runs this command, follow these steps exactly:
 
 ## Step 1: Gather Project Info
 
-Ask the user two questions (one at a time):
+Ask the user these questions (one at a time):
 1. "What are you building?" (brief description for CLAUDE.md)
 2. "What's your tech stack?" with presets:
    - A) Python (FastAPI) + React (Vite) + PostgreSQL
    - B) Python (FastAPI) + Next.js + PostgreSQL
    - C) Node (Express) + React (Vite) + PostgreSQL
    - D) Custom (I'll specify)
+3. "What type of project is this?" (for design calibration):
+   - A) Consumer-facing app (high design bar)
+   - B) Internal tool / dashboard (functional focus)
+   - C) API-only / backend service (no UI scoring)
+4. "How will the evaluator reach the running app?" (verification mode):
+   - A) Docker Compose (default — app runs in containers)
+   - B) Local dev servers (app runs via npm/uvicorn/etc.)
+   - C) Stub / mock server (no runnable backend — serverless or external-only)
 
 ## Step 2: Generate project-manifest.json
 
@@ -27,6 +35,74 @@ Based on their answers, write `project-manifest.json` to the project root. Fill 
 - stack.deployment: method ("docker-compose"), services list
 - evaluation: api_base_url, ui_base_url, health_check, design_score_threshold (7), design_max_iterations (10), test_corpus_dir
 - execution: default_mode ("full"), max_self_heal_attempts (3), max_auto_iterations (50), coverage_threshold (80), session_chaining (true), agent_team_size ("auto"), teammate_model ("sonnet")
+- verification: mode, health_check, and mode-specific config (see below)
+
+### Verification Config (based on question 4)
+
+**If Docker (A):**
+```json
+"verification": {
+  "mode": "docker",
+  "health_check": { "url": "http://localhost:3000/health", "retries": 5, "backoff_seconds": 2 },
+  "docker": { "compose_file": "docker-compose.yml", "services": ["backend", "frontend"] }
+}
+```
+
+**If Local (B):**
+```json
+"verification": {
+  "mode": "local",
+  "health_check": { "url": "http://localhost:3000/health", "retries": 5, "backoff_seconds": 2 },
+  "local": { "backend_url": "http://localhost:8000", "frontend_url": "http://localhost:3000", "start_commands": [] }
+}
+```
+
+**If Stub (C):**
+```json
+"verification": {
+  "mode": "stub",
+  "health_check": { "url": "http://localhost:4000/health", "retries": 5, "backoff_seconds": 2 },
+  "stub": { "schema_source": "specs/design/api-contracts.schema.json", "auto_generate_mock_server": true }
+}
+```
+
+### Generate calibration-profile.json (based on question 3)
+
+**If Consumer-facing app (A):**
+```json
+{
+  "scoring": {
+    "weights": { "design_quality": 1.5, "originality": 1.5, "craft": 1.5, "functionality": 1.0 },
+    "threshold": 8,
+    "per_criterion_minimum": 5
+  },
+  "iteration": {
+    "max_iterations": 10,
+    "plateau_window": 3,
+    "plateau_delta": 0.3,
+    "pivot_after_plateau": true
+  }
+}
+```
+
+**If Internal tool (B):**
+```json
+{
+  "scoring": {
+    "weights": { "design_quality": 0.75, "originality": 0.5, "craft": 0.5, "functionality": 1.5 },
+    "threshold": 6,
+    "per_criterion_minimum": 4
+  },
+  "iteration": {
+    "max_iterations": 5,
+    "plateau_window": 3,
+    "plateau_delta": 0.3,
+    "pivot_after_plateau": false
+  }
+}
+```
+
+**If API-only (C):** Do not create `calibration-profile.json` (no UI scoring needed).
 
 Preset mappings:
 - A) backend: python/3.12/fastapi/uv/ruff/mypy/pytest, frontend: typescript/react/vite/npm/eslint/tsc/vitest, db: postgresql
