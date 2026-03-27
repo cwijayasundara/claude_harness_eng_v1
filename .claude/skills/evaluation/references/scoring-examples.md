@@ -1,42 +1,60 @@
 # Design Scoring Calibration Examples
 
-Use these examples to calibrate your scoring. Each shows the expected score range and reasoning.
+Read these examples BEFORE scoring any page. They anchor your scoring to consistent standards.
 
-## Example 1: Score ~3 (Poor)
-**Scenario:** Default Material UI / Bootstrap page with zero customization
-- Design Quality: 2 — No visual identity, raw library defaults
-- Originality: 1 — Completely generic, looks like every tutorial
-- Craft: 4 — Spacing works because the framework handles it
-- Functionality: 5 — Usable but uninspiring
-- **Weighted avg: 2.8**
-- **Why it scores low:** No decisions were made. The UI is functional but has zero personality.
+## Score 5 — Below Threshold (Generic Template)
 
-## Example 2: Score ~5 (Mediocre)
-**Scenario:** Custom color palette applied to a template layout, basic typography hierarchy
-- Design Quality: 5 — Colors are intentional but layout is still template
-- Originality: 4 — Some customization but not distinctive
-- Craft: 5 — Typography hierarchy exists but spacing is inconsistent
-- Functionality: 6 — Clear navigation, forms work
-- **Weighted avg: 4.8**
-- **Why it scores medium:** Effort was made but the result could belong to any project.
+**Characteristics:**
+- Default framework colors (Tailwind gray-50 backgrounds, blue-500 buttons) with no customization
+- Stock spacing — default padding/margin from utility classes, no intentional hierarchy
+- No typography pairing — single font family, no size variation beyond h1/h2/p defaults
+- Generic icons from default icon pack with no sizing or color coordination
+- Layout is a single-column stack or basic sidebar — no grid sophistication
 
-## Example 3: Score ~7 (Good)
-**Scenario:** Cohesive visual system with custom typography, intentional color palette, clear hierarchy, smooth interactions
-- Design Quality: 7 — Coherent identity, colors work together
-- Originality: 7 — Recognizably different from templates
-- Craft: 7 — Clean spacing, proper type scale, aligned grid
-- Functionality: 8 — Intuitive navigation, clear CTAs, good feedback
-- **Weighted avg: 7.2**
-- **Why it scores well:** Intentional decisions throughout. You could identify this project from a screenshot.
+**Why it scores 5:**
+- Design Quality: 5 — Works but looks like `npx create-next-app` with content added
+- Originality: 4 — Zero custom decisions; every element is a library default
+- Craft: 5 — Spacing is consistent (framework handles it) but not intentional
+- Functionality: 6 — Usable, clear labels, but no affordance refinement
+- Weighted: (7.5 + 6.0 + 3.75 + 4.5) / 4.5 = **4.8**
 
-## Example 4: Score ~9 (Exceptional)
-**Scenario:** Distinctive visual language, creative layout, micro-interactions, perfect responsive behavior, delightful details
-- Design Quality: 9 — Strong, memorable visual identity
-- Originality: 9 — Genuinely creative approach, not derivative
-- Craft: 8 — Near-perfect execution, tiny inconsistencies
-- Functionality: 9 — Effortless to use, anticipates user needs
-- **Weighted avg: 8.8**
-- **Why it scores high:** Could win a design award. Every pixel is intentional.
+## Score 7 — Threshold Pass (Cohesive Design)
 
-## How to Use These Examples
-When scoring, ask: "Is this closer to Example 1, 2, 3, or 4?" Then adjust within that range based on specifics.
+**Characteristics:**
+- Custom color palette — 2-3 intentional brand colors, not framework defaults
+- Spacing hierarchy — clear visual grouping with larger gaps between sections, tighter within
+- Typography pairing — heading font differs from body, or clear size/weight scale (e.g., 32/24/18/14)
+- Custom component styling — buttons, cards, inputs have border-radius, shadow, and color that feel coordinated
+- Layout uses grid or intentional asymmetry — not just stacked blocks
+
+**Why it scores 7:**
+- Design Quality: 7 — Cohesive visual identity; you can tell someone made design decisions
+- Originality: 7 — Custom palette and component styling distinguish it from templates
+- Craft: 7 — Intentional spacing scale, consistent shadows, aligned elements
+- Functionality: 7 — Clear action hierarchy, good feedback on interactions
+- Weighted: (10.5 + 10.5 + 5.25 + 5.25) / 4.5 = **7.0**
+
+## Score 9 — Excellent (Distinctive & Crafted)
+
+**Characteristics:**
+- Distinctive visual identity — memorable color scheme, unique layout patterns, brand personality
+- Micro-interactions — hover states with transitions, loading skeletons, smooth page transitions
+- Typography mastery — font pairing that creates mood (e.g., geometric sans for headings + humanist for body)
+- Systematic spacing — 4px or 8px base grid visible in all measurements
+- Responsive sophistication — not just "mobile works" but layout genuinely adapts (e.g., sidebar becomes bottom nav, grid reflows meaningfully)
+- Consistent visual language — every page feels like the same product
+
+**Why it scores 9:**
+- Design Quality: 9 — Could be a shipped product; distinctive visual identity
+- Originality: 9 — Unique design language; not recognizable as any template
+- Craft: 9 — Pixel-level attention to spacing, alignment, color harmony
+- Functionality: 8 — Intuitive flows, clear feedback, good error states
+- Weighted: (13.5 + 13.5 + 6.75 + 6.0) / 4.5 = **8.8**
+
+## How to Use These Anchors
+
+1. Before scoring, recall the score-5, score-7, and score-9 examples
+2. Place the page you are scoring relative to these anchors
+3. A page that looks better than score-5 but not as cohesive as score-7 is a 6
+4. A page between score-7 and score-9 is an 8
+5. Score each criterion independently — a page can have score-8 craft but score-5 originality

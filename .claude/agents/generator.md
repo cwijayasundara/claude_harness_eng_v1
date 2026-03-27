@@ -62,15 +62,57 @@ For each sprint group:
 - Read `specs/design/component-map.md`
 - Build a work assignment table: story → files → sub-agent
 
+### Step 2.5: Dependency Handshake (Before Spawning Teammates)
+
+Before spawning any teammates, analyze the component map for the current group:
+
+1. **Identify shared files** — files that appear in 2+ stories within this group. These need an integrator.
+2. **Identify interface boundaries** — where one story's output is consumed by another story (look for `Produces:` and `Consumes:` annotations in the component map).
+3. **Build a micro-DAG** — group teammates into execution phases:
+   - **Phase 1:** Teammates with no upstream dependencies (no `Consumes:` from another story in this group)
+   - **Phase 2:** Teammates that consume Phase 1 outputs. They start only after Phase 1 teammates commit their typed interface contracts.
+   - **Phase 3:** Integration wiring (if shared files need coordinated edits)
+4. **Designate integrators** — for each shared file, assign one teammate as the owner. Other teammates declare what they need added (types, routes, exports) via task messaging.
+
+If the component map has no `Produces:`/`Consumes:` annotations and no shared files, skip the handshake and spawn all teammates in parallel (current behavior).
+
+Log the micro-DAG to `iteration-log.md`:
+```
+Group C micro-DAG:
+  Phase 1: teammate-upload (produces: UploadResult)
+  Phase 2: teammate-process (consumes: UploadResult, produces: ProcessedDocument)
+  Phase 3: teammate-upload integrates shared types.py
+```
+
 ### Step 3: Spawn Agent Team
-- Create one sub-agent per story
-- Pass each sub-agent: story content, owned file list, schema references, plan-approval requirement
-- Wait for all sub-agents to submit plans before approving any implementation
-- Review plans for: schema compliance, naming consistency, no overlap with other agents' files
+
+Execute teammates in phases from the micro-DAG:
+
+**Phase 1 teammates** — spawn in parallel. Each teammate must:
+- Implement their code with TDD
+- Define typed interface contracts for any `Produces:` outputs (Pydantic model or TypeScript interface)
+- Commit their interface contracts before signaling completion
+
+**Phase 2 teammates** — spawn in parallel after ALL Phase 1 teammates complete. Each receives:
+- The typed interface contracts from Phase 1 (read from committed files)
+- Their story acceptance criteria and file ownership
+
+**Phase 3 (integration)** — if shared files exist, the designated integrator:
+- Collects all declared additions from teammates via task messaging
+- Writes all additions to the shared file in a single commit
+- No other teammate writes to shared files
+
+**Teammate prompt must include:**
+- Story acceptance criteria
+- File ownership (which files this teammate may edit)
+- Learned rules (from `.claude/state/learned-rules.md`)
+- Quality principles (from `.claude/skills/code-gen/SKILL.md`)
+- Interface contracts from upstream teammates (Phase 2+ only)
+- If the story involves an external API: include `.claude/skills/code-gen/references/api-integration-patterns.md`
+
+Max 5 concurrent teammates per phase. If a phase has >5 stories, batch in groups of 5.
 
 ### Step 4: Coordinate Implementation (TDD Mandatory)
-- Approve plans in dependency order (upstream stories first)
-- If a story depends on an interface not yet implemented, provide a stub or contract definition
 - Monitor for file ownership violations — reject and reassign if found
 - **Every teammate MUST follow TDD:** write failing test → implement → verify pass → commit
 - Teammates may NOT write implementation code before writing the corresponding test
@@ -94,6 +136,7 @@ For each sprint group:
 - Every public function/endpoint must have a corresponding test
 - No hardcoded secrets, no `console.log` left in production paths
 - Prefer explicit error handling over silent failures
+- When your story produces output consumed by another story, define the typed interface contract (Pydantic model / TypeScript interface) FIRST, before writing implementation logic. Commit the contract so downstream teammates can code against it.
 
 ## Gotchas
 

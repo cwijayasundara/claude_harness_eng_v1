@@ -100,6 +100,263 @@ class OrderNotFoundError extends DomainError {
 
 ---
 
+## LLM Integration — Structured Output Mandatory
+
+When generated code calls any LLM (Claude, GPT, or other), follow these rules:
+
+### 1. Always Use Structured Output
+
+Use `tool_use` / `function_calling` / `response_format: { type: "json_schema", json_schema: ... }` for every LLM call. Never parse free-text responses with regex or string splitting.
+
+### 2. Define a Response Schema
+
+Every LLM call must have a typed model for the expected response:
+
+```python
+from pydantic import BaseModel
+from typing import Literal
+
+class ClassificationResult(BaseModel):
+    category: str
+    confidence: Literal["high", "medium", "low"]
+    reasoning: str
+```
+
+```typescript
+interface ClassificationResult {
+  category: string;
+  confidence: "high" | "medium" | "low";
+  reasoning: string;
+}
+```
+
+### 3. Validate Before Using
+
+Parse the LLM response through the schema. If validation fails:
+1. Retry once with an explicit correction prompt: "Your response did not match the required schema. Required: {schema}. Please respond again."
+2. If second attempt fails, raise a typed error — do not fall back to a default value.
+
+### 4. No Silent Fallbacks
+
+Never write:
+```python
+# WRONG — hides bugs that compound
+try:
+    result = await call_llm(prompt)
+    parsed = ResponseModel.model_validate_json(result)
+except Exception:
+    parsed = ResponseModel(category="unknown", confidence="low", reasoning="")
+```
+
+Instead:
+```python
+# CORRECT — caller decides how to handle failure
+class LLMResponseError(Exception):
+    def __init__(self, raw_response: str, validation_error: str):
+        self.raw_response = raw_response
+        self.validation_error = validation_error
+        super().__init__(f"LLM response validation failed: {validation_error}")
+
+try:
+    result = await call_llm(prompt)
+    parsed = ResponseModel.model_validate_json(result)
+except ValidationError as e:
+    raise LLMResponseError(raw_response=result, validation_error=str(e))
+```
+
+### 5. Log Raw Responses
+
+Always log the raw LLM response at DEBUG level before parsing:
+
+```python
+logger.debug(
+    "LLM response received",
+    extra={
+        "provider": self._provider_name,
+        "model": self._model,
+        "prompt_tokens": response.usage.input_tokens,
+        "completion_tokens": response.usage.output_tokens,
+        "raw_content": response.content[:1000],
+        "latency_ms": round(elapsed_ms, 2),
+    },
+)
+```
+
+---
+
+## External API Integration
+
+When generated code calls any external API (third-party services, partner APIs, cloud services), follow these rules. See `.claude/skills/code-gen/references/api-integration-patterns.md` for full templates.
+
+### Service Wrapper Pattern (Mandatory)
+
+Every external API gets a dedicated wrapper class. This is the ONLY file that imports the SDK or makes HTTP calls to that service.
+
+```
+Business Logic (process_service.py)
+    ↓ calls typed methods
+API Wrapper (external_client.py)    ← only file that imports SDK / makes HTTP calls
+    ↓ calls
+External API
+```
+
+Rules:
+- One wrapper class per external API
+- Wrapper exposes project-internal typed models, not SDK types
+- Business logic never sees SDK response objects — only your domain types
+- The wrapper is the mock boundary in tests
+
+### Error Taxonomy (Mandatory)
+
+Every wrapper classifies errors into typed categories:
+
+```python
+class ApiTransientError(Exception):
+    """Retryable: 429, 502, 503, timeout, connection reset."""
+    pass
+
+class ApiPermanentError(Exception):
+    """Not retryable: 400, 401, 403, 404, schema mismatch."""
+    pass
+
+class ApiRateLimitError(ApiTransientError):
+    """Rate limited with backoff hint."""
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
+```
+
+- Business logic catches `ApiTransientError` to retry/degrade, `ApiPermanentError` to fail fast
+- No bare `except Exception` in any API-calling code
+- All exceptions carry HTTP status code and response body for debugging
+
+### Retry and Rate Limiting
+
+- Retry config lives in `config.yml` under `external_apis.{service_name}.retry`, not hardcoded
+- Wrapper applies exponential backoff internally — business logic is unaware of retries
+- Respect `Retry-After` headers when present
+- Log every retry attempt at WARNING level
+
+### Async Bridging
+
+When an SDK is synchronous but the backend is async:
+- Use `asyncio.to_thread()` only inside the wrapper class
+- Never bridge in business logic
+- Prefer async SDKs or HTTP clients when available
+
+### Secrets
+
+- API keys in `.env` only, loaded via config layer
+- Wrapper reads from injected config, never from `os.environ` directly
+- `.env.example` committed with placeholder values
+
+---
+
+## Production Standards
+
+These standards apply to ALL generated code, not just API wrappers or LLM calls.
+
+### Structured Logging
+
+All generated services must use structured logging with `extra` dicts:
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+# CORRECT — structured fields for JSON log formatters
+logger.info("Document processed", extra={
+    "document_id": doc.id,
+    "processing_time_ms": round(elapsed_ms, 2),
+    "output_size_bytes": len(result),
+})
+
+# WRONG — data interpolated into message string
+logger.info(f"Document {doc.id} processed in {elapsed_ms}ms")
+```
+
+```typescript
+// CORRECT — structured logger
+logger.info("Document processed", {
+  documentId: doc.id,
+  processingTimeMs: Math.round(elapsedMs),
+  outputSizeBytes: result.length,
+});
+
+// WRONG — template literal message
+logger.info(`Document ${doc.id} processed in ${elapsedMs}ms`);
+```
+
+Rules:
+- Use `logging.getLogger(__name__)` (Python) or scoped logger (TypeScript) at module level
+- INFO for business events (request received, document processed, job completed)
+- WARNING for recoverable issues (retry triggered, fallback used, slow response)
+- ERROR for failures requiring attention (unhandled exception, data corruption, external service down)
+- DEBUG for troubleshooting data (raw payloads, intermediate state, timing breakdowns)
+- Never log secrets, tokens, passwords, or PII
+- Log at service boundaries: incoming requests, outgoing calls, business decisions
+
+### Exception Handling
+
+```python
+# CORRECT — typed exception with context
+class DocumentProcessingError(Exception):
+    def __init__(self, document_id: str, stage: str, cause: Exception):
+        self.document_id = document_id
+        self.stage = stage
+        self.cause = cause
+        super().__init__(f"Failed at {stage} for document {document_id}: {cause}")
+
+# WRONG — bare except swallowing the error
+try:
+    result = process(doc)
+except Exception:
+    result = default_value
+```
+
+Rules:
+- Define typed exception classes per domain (not per function)
+- Every exception carries enough context to debug without the stack trace
+- Never catch `Exception` or `BaseException` unless re-raising or logging at a top-level boundary
+- No silent fallbacks — if an operation fails, the caller must know
+- API route handlers catch domain exceptions and map to HTTP error responses
+
+### Structured Error Responses
+
+All API error responses follow a consistent envelope:
+
+```json
+{
+  "error": {
+    "code": "DOCUMENT_NOT_FOUND",
+    "message": "Document with ID abc123 does not exist",
+    "details": {}
+  }
+}
+```
+
+Rules:
+- `code` is a machine-readable UPPER_SNAKE_CASE string enum
+- `message` is human-readable
+- `details` is optional structured context
+- HTTP status mapping: 400 validation, 404 not found, 409 conflict, 422 processing error, 500 internal
+
+### Request/Response Validation
+
+- All API inputs validated via Pydantic models (Python) or Zod schemas (TypeScript)
+- Validation errors return 400 with field-level messages
+- All API outputs serialized through response models — never return raw dicts or ORM objects
+
+### Configuration
+
+- All configurable values in `config.yml` or environment variables
+- No magic numbers or hardcoded strings in business logic
+- Config loaded once at startup, injected into services via constructor
+- Defaults provided for all non-secret config values
+
+---
+
 ## Parallel Execution
 
 - **File ownership:** consult `component-map.md` before touching any file.
@@ -121,3 +378,14 @@ class OrderNotFoundError extends DomainError {
 - Commented-out code in the submitted diff
 - Missing error-path test coverage
 - Teammates editing the same file in the same sprint without coordination
+- **Free-text LLM parsing** — Never use regex to parse LLM output. Use structured output (tool_use / JSON mode).
+- **Silent fallback on LLM error** — `except Exception: return default` hides compounding bugs. Raise typed errors.
+- **Missing raw response logging** — Always log raw LLM response at DEBUG before parsing. This is the debugging ground truth.
+- **Direct SDK imports outside wrapper** — All SDK imports must be inside the wrapper class file. Business logic imports your wrapper, not the SDK.
+- **Bare except on API calls** — Catch `ApiTransientError` and `ApiPermanentError` specifically. Never `except Exception`.
+- **Hardcoded retry config** — Retry attempts, backoff, and timeout belong in `config.yml`, not in code.
+- **Missing structured logging in API wrapper** — Every request/response/error must be logged with structured fields (service, operation, attempt, latency_ms).
+- **f-string log messages** — Use `extra` dict for structured fields, not string interpolation. Structured logs are searchable; f-strings are not.
+- **Missing logging at service boundaries** — Every incoming request and outgoing call must be logged with timing and status.
+- **Raw dict API responses** — Always serialize through a response model. Raw dicts bypass validation and leak internal structure.
+- **Magic numbers** — All thresholds, limits, timeouts, and configuration belong in `config.yml`.

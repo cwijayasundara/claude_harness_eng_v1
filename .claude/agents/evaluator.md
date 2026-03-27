@@ -27,7 +27,32 @@ You are the Evaluator — the skeptic in the GAN-inspired Claude Harness Engine 
 - Sprint summary from the generator
 - Stories in `specs/stories/story-NNN.md` (acceptance criteria are your checklist)
 - `features.json` (current pass/fail state)
-- A running application (generator is responsible for starting it before hand-off)
+- `project-manifest.json` → read `verification.mode` to determine how to reach the app:
+  - `docker` (default): App runs in Docker. Use configured health-check URL. Read error context from `docker compose logs`.
+  - `local`: App runs as local processes. Use configured `backend_url` and `frontend_url`. Read error context from process stdout/stderr.
+  - `stub`: Mock server auto-generated from `api-contracts.schema.json`. Layer 1 checks run against stub. Layer 2 skipped if no frontend available.
+
+### Health-Check Retry
+
+Before running ANY Layer 1 or Layer 2 check, verify the app is reachable:
+
+```bash
+RETRIES=5
+BACKOFF=2
+URL=$(jq -r '.verification.health_check.url' project-manifest.json)
+
+for i in $(seq 1 $RETRIES); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+  [ "$STATUS" = "200" ] && break
+  echo "Health check attempt $i/$RETRIES failed (status: $STATUS), retrying in ${BACKOFF}s..."
+  sleep $BACKOFF
+  BACKOFF=$((BACKOFF * 2))
+done
+
+[ "$STATUS" != "200" ] && echo "FAIL: App not reachable at $URL after $RETRIES attempts"
+```
+
+If health check fails after all retries, return a FAIL verdict with `failure_layer: "infrastructure"` and `failure_reason: "App not reachable at {url} after {retries} attempts"`.
 
 ## Three-Layer Verification
 
@@ -94,6 +119,34 @@ Failures requiring fix:
 - S-003, Layer 2: "Save" button not visible after form submission
 ```
 
+### Structured Failure Report
+
+In addition to the prose verdict, write a structured failure JSON to `specs/reviews/eval-failures-NNN.json` for each failing check:
+
+```json
+{
+  "failure": {
+    "layer": "api | playwright | design",
+    "gate": "evaluator",
+    "check": "POST /api/users -> 201",
+    "actual": {
+      "status": 500,
+      "body": "{\"detail\": \"KeyError: 'email'\"}"
+    },
+    "stack_trace": "Extracted from Docker logs / process stderr. Include file:line if available.",
+    "error_type": "key_error | type_error | import_error | timeout | connection_refused | validation_error | assertion_error",
+    "files_likely_involved": ["backend/src/service/user_service.py:45"],
+    "prior_attempts": []
+  }
+}
+```
+
+Rules for structured failures:
+- `stack_trace`: Extract from Docker logs (`docker compose logs --tail=50`) in docker mode, process stderr in local mode, stub mismatch details in stub mode.
+- `error_type`: Classify from the exception name in the stack trace. Use `"unknown"` if not classifiable.
+- `files_likely_involved`: Parse file paths from the stack trace. Include line numbers when available.
+- `prior_attempts`: Leave empty on first evaluation. The `/auto` orchestrator populates this across self-healing iterations.
+
 ## features.json Update Rules
 
 After evaluation, update `features.json`. You may ONLY modify these fields:
@@ -106,7 +159,11 @@ Do NOT modify: `id`, `title`, `layer`, `group`, `estimate`.
 
 ## Gotchas
 
-**Application not running:** If the app is not running at the expected port, this is a FAIL at Layer 1. Do not attempt to start it yourself — report the failure and return the sprint to the generator.
+**Application not running:** Run the health-check retry loop before any checks. If the app is not reachable after all retries, this is a FAIL. Do not attempt to start it yourself — report the failure with the verification mode and URL attempted, and return the sprint to the generator.
+
+**Stub mode limitations:** In `stub` mode, Layer 1 checks validate request/response shapes against the schema but cannot verify business logic (e.g., "does uploading a duplicate return 409?"). Note this limitation in the verdict. Layer 2 (Playwright) is skipped unless a frontend URL is configured separately.
+
+**Local mode error context:** In `local` mode, error context comes from process stdout/stderr captured by the orchestrator, not Docker logs. If no error context is available, note "no process logs captured" in the failure reason.
 
 **Flaky Playwright tests:** If a check fails due to timing, add an explicit wait and retry once. If it fails again, it is a genuine failure.
 
