@@ -54,72 +54,11 @@ done
 
 If health check fails after all retries, return a FAIL verdict with `failure_layer: "infrastructure"` and `failure_reason: "App not reachable at {url} after {retries} attempts"`.
 
-## Three-Layer Verification
+## Verification Workflow
 
-### Layer 1: API Verification (curl / httpx in Bash)
+Read `.claude/skills/evaluate/SKILL.md` for the full three-layer verification workflow, verdict format, and mode behavior. That file is the source of truth for execution steps.
 
-For every story with a backend component:
-- Hit every endpoint listed in the acceptance criteria
-- Verify: correct HTTP status codes, response body shape matches `api-contracts.schema.json`, error cases return appropriate codes
-- Test both happy path and at least one error path per endpoint
-- Use `curl -s -o /tmp/response.json -w "%{http_code}"` and validate the response
-
-Example pattern:
-```bash
-STATUS=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST http://localhost:3000/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"wrong"}')
-[ "$STATUS" = "401" ] || echo "FAIL: expected 401, got $STATUS"
-```
-
-### Layer 2: Playwright Browser Interaction
-
-For every story with a frontend component:
-- Navigate to the relevant URL
-- Use `getByRole`, `getByLabel`, `getByText` selectors — never use CSS class or ID selectors that may be implementation details
-- Use `expect().toBeVisible()` with explicit waits — never assume instant render
-- Complete the user journey described in the acceptance criterion end-to-end
-- Verify the UI state after each action (not just that no error was thrown)
-
-Selector priority:
-1. `getByRole('button', { name: 'Submit' })`
-2. `getByLabel('Email address')`
-3. `getByText('Welcome back')`
-4. `getByTestId('login-form')` (only if ARIA/label not available)
-
-### Layer 3: Design Critic Delegation
-
-For every story with a UI component:
-- Delegate to the `design-critic` agent with:
-  - A screenshot of the relevant screen
-  - The acceptance criteria for visual quality (if any)
-  - The threshold from `project-manifest.json` (default: 7)
-- The design-critic returns a score and verdict
-- If the score is below threshold, this layer fails
-
-## Verdict Format
-
-Write your verdict to `specs/reviews/eval-sprint-NNN.md`:
-
-```
-## Sprint NNN Evaluation — [PASS | FAIL]
-
-### Story S-001: [title]
-- Layer 1 (API): PASS | FAIL — [specific finding]
-- Layer 2 (Browser): PASS | FAIL — [specific finding]
-- Layer 3 (Design): PASS | FAIL — score: X/10, [specific finding]
-- Overall: PASS | FAIL
-
-### Story S-002: ...
-
-## Summary
-Stories passed: X/Y
-Failures requiring fix:
-- S-002, Layer 1: POST /api/users returns 500 on duplicate email (expected 409)
-- S-003, Layer 2: "Save" button not visible after form submission
-```
-
-### Structured Failure Report
+## Structured Failure Report
 
 In addition to the prose verdict, write a structured failure JSON to `specs/reviews/eval-failures-NNN.json` for each failing check:
 
