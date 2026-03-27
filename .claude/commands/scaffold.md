@@ -24,6 +24,14 @@ Ask the user these questions (one at a time):
    - A) Docker Compose (default — app runs in containers)
    - B) Local dev servers (app runs via npm/uvicorn/etc.)
    - C) Stub / mock server (no runnable backend — serverless or external-only)
+5. "Install complementary official Claude Code plugins?" (recommended: Yes)
+   - `code-review` — Automated PR review with confidence scoring
+   - `commit-commands` — `/commit`, `/commit-push-pr` git workflows
+   - `security-guidance` — Real-time security pattern checking on edits
+   - `pr-review-toolkit` — Specialized PR review agents (comments, tests, errors, types)
+   - A) Yes, install all four (recommended)
+   - B) Let me pick which ones
+   - C) No, skip official plugins
 
 ## Step 2: Generate project-manifest.json
 
@@ -122,6 +130,36 @@ cp $PLUGIN_SOURCE/architecture.md .claude/architecture.md
 cp $PLUGIN_SOURCE/program.md .claude/program.md
 cp $PLUGIN_SOURCE/settings.json .claude/settings.json
 ```
+
+### Add Official Plugins to settings.json (based on question 5)
+
+After copying settings.json, add the `enabledPlugins` block based on the user's answer:
+
+**If Yes (all four) or selected plugins:**
+Add to the project's `.claude/settings.json`:
+```json
+"enabledPlugins": {
+  "code-review@claude-plugins-official": true,
+  "commit-commands@claude-plugins-official": true,
+  "security-guidance@claude-plugins-official": true,
+  "pr-review-toolkit@claude-plugins-official": true
+}
+```
+
+If the user chose "Let me pick," only include the plugins they selected.
+
+**If No:** Do not add `enabledPlugins` to settings.json.
+
+These plugins are complementary to the harness and do not conflict:
+- `code-review` — PR review (our harness does sprint evaluation, not PR review)
+- `commit-commands` — git workflows (our harness manages commits in `/auto`, but manual commits need this)
+- `security-guidance` — real-time edit-time security patterns (XSS, eval, unsafe HTML) that complement our `detect-secrets` hook
+- `pr-review-toolkit` — specialized PR agents for after the harness finishes building
+
+**Do NOT install** these official plugins (they conflict with harness functionality):
+- `feature-dev` — competes with our `/brd` -> `/spec` -> `/design` -> `/implement` pipeline
+- `frontend-design` — competes with our `ui-designer` + `design-critic` GAN loop
+- `hookify` — dynamically generated hooks could interfere with our purpose-built hooks
 
 ## Step 4: Create Output Directories
 
