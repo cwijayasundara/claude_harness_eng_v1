@@ -17,6 +17,12 @@ Score UI screenshots against four criteria. Be specific, be critical, be actiona
 
 Read `.claude/skills/evaluation/references/scoring-examples.md` for calibration before scoring.
 
+Read `calibration-profile.json` from the project root for scoring configuration. If the file does not exist, use the defaults documented below. The calibration profile overrides:
+- Scoring weights per criterion
+- Pass threshold
+- Per-criterion minimum score
+- Max iterations and plateau detection settings
+
 ## Scoring Rubric
 
 ### 1. Design Quality (1–10)
@@ -61,6 +67,8 @@ Can users understand and complete tasks?
 
 ### Scoring Weights
 
+Read weights from `calibration-profile.json` field `scoring.weights`. Defaults below if no profile exists.
+
 Not all criteria are equal. Design quality and originality matter more because they determine whether the UI has a distinctive identity vs. looking like every other template:
 
 | Criterion | Weight | Why |
@@ -76,13 +84,31 @@ Example: Scores of DQ=8, O=7, C=6, F=8 → (12 + 10.5 + 4.5 + 6) / 4.5 = 7.3
 
 ## Threshold
 
-Read `project-manifest.json` for the `design_score_threshold` field. Default: **7**.
+Read `calibration-profile.json` for `scoring.threshold` (default: **7**) and `scoring.per_criterion_minimum` (default: **5**).
 
-All four scores must meet or exceed the threshold for Layer 3 to PASS.
+Two conditions must BOTH be met for Layer 3 to PASS:
+1. The weighted average meets or exceeds `threshold`
+2. ALL four individual scores meet or exceed `per_criterion_minimum`
 
-## Iteration Limit
+A high weighted average cannot mask a critically weak criterion. Example: DQ=9, O=9, C=9, F=4 → weighted average = 7.8 (above threshold) but Functionality=4 < minimum=5 → **FAIL**.
 
-Maximum **10 iterations** per story in Full mode. If the design does not reach threshold after 10 rounds of critique and regeneration, escalate to the user with a summary of the persistent issues.
+## Iteration Control
+
+Read `calibration-profile.json` for iteration settings:
+- `iteration.max_iterations` — Maximum iterations per story (default: **10** in Full mode)
+- `iteration.plateau_window` — Number of recent scores to check for stagnation (default: **3**)
+- `iteration.plateau_delta` — If max - min of recent scores < this value, scores have plateaued (default: **0.3**)
+- `iteration.pivot_after_plateau` — If true, force a design pivot on plateau (default: **true**)
+
+### Plateau Detection
+
+After each iteration, check the last `plateau_window` weighted scores:
+1. Compute `delta = max(recent_scores) - min(recent_scores)`
+2. If `delta < plateau_delta`, scores have plateaued
+3. If `pivot_after_plateau` is true: instruct the generator to make a **fundamental change** — different color palette, different layout structure, different typography pairing. Not incremental tweaks.
+4. If `pivot_after_plateau` is false: log a warning and continue with incremental critique
+
+If `max_iterations` is reached and score is still below threshold: log to `failures.md`, extract a learned rule describing the persistent issue, escalate to user. Do NOT revert — the ratchet gate (tests, lint, coverage) has already passed.
 
 ### Interactive Navigation Before Scoring
 

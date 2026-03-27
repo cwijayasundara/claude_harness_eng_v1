@@ -94,47 +94,54 @@ Rules:
 
 Spawn the generator agent to create and manage a Claude Code agent team for the current group.
 
-### Team Structure
+### Dependency Handshake
 
-- **1 teammate per story**, maximum **5 concurrent teammates**.
-- If the group has more than 5 stories, batch: run the first 5, then the remainder after all complete.
-- File ownership is assigned from `specs/design/component-map.md`. Each teammate owns specific files and may not edit files outside their assignment without coordinator approval.
+Before spawning teammates, the generator analyzes the component map:
+1. Identifies shared files (files in 2+ stories)
+2. Identifies interface boundaries (`Produces:` / `Consumes:` in component map)
+3. Builds a micro-DAG grouping teammates into execution phases
+4. Designates integrators for shared files
 
-### Teammate Spawn Prompt Requirements
+Log the micro-DAG to `iteration-log.md`.
 
-Every teammate prompt must include:
+If no cross-dependencies exist, all teammates spawn in parallel (legacy behavior).
 
-1. The story's full acceptance criteria.
-2. The file ownership list for that story from `component-map.md`.
-3. All learned rules from `.claude/state/learned-rules.md` (verbatim).
-4. Quality principles from `.claude/skills/code-gen/SKILL.md`.
-5. Instruction to **message teammates** before modifying any shared type or interface file.
-6. Instruction to **present a plan and await approval** before writing code.
+### Phased Execution
 
-### Teammate Coordination
+| Phase | Who | Starts When | Must Do |
+|-------|-----|------------|---------|
+| 1 | Teammates with no upstream deps | Immediately | Implement + commit typed interface contracts |
+| 2 | Teammates consuming Phase 1 outputs | All Phase 1 teammates complete | Code against committed interface contracts |
+| 3 | Integrators for shared files | All Phase 2 teammates complete | Collect declared additions, write to shared files |
 
-- Before editing a shared type definition, the teammate must message affected teammates describing the change.
-- If two teammates claim the same file, escalate to the orchestrator for resolution.
+Max 5 concurrent teammates per phase. Batch in groups of 5 if more.
+
+### Teammate Spawn Prompt
+
+Every teammate receives:
+- Story acceptance criteria (from `specs/stories/story-NNN.md`)
+- File ownership (from `specs/design/component-map.md`)
+- Learned rules (from `.claude/state/learned-rules.md` — inject verbatim)
+- Quality principles (from `.claude/skills/code-gen/SKILL.md`)
+- Interface contracts from upstream teammates (Phase 2+ only)
+- If story involves external API: `.claude/skills/code-gen/references/api-integration-patterns.md`
 
 ### Solo Mode
 
-In Solo mode, the generator works directly without spawning a team. It implements all stories sequentially, following the same quality principles and plan-approval workflow.
+In Solo mode, the generator works alone sequentially. No team spawning, no phases. Read stories in dependency order and implement one at a time.
 
-### Model Tiering (cost optimization)
+### Model Tiering
 
-Use the least powerful model that can handle each role:
+| Role | Model | Rationale |
+|------|-------|-----------|
+| `/auto` orchestrator | Opus | Judgment, architectural decisions |
+| Evaluator | Opus | Skeptical verification |
+| Design critic | Opus | Subjective visual judgment |
+| Generator lead | Sonnet | Coordination, lower cost |
+| Generator teammates | Sonnet | Mechanical implementation |
+| Security reviewer | Sonnet | Pattern matching |
 
-| Role | Recommended Model | Why |
-|------|------------------|-----|
-| /auto orchestrator | opus | Judgment, coordination, architectural decisions |
-| Evaluator | opus | Must be skeptical, catch subtle issues |
-| Design critic | opus | Subjective visual judgment |
-| Generator (lead) | sonnet | Coordination, file assignment |
-| Generator teammates | sonnet | Mechanical implementation from specs |
-| Security reviewer | sonnet | Pattern matching against known vulnerabilities |
-
-Configure teammate model in `project-manifest.json` → `execution.teammate_model`.
-The orchestrator and evaluator always use the most capable model available.
+Configure via `project-manifest.json` field `execution.model_tier`.
 
 ---
 
@@ -266,10 +273,26 @@ Do not immediately revert. Attempt targeted self-healing first.
 | Architecture drift | Schema mismatch / missing file | Read the schema, fix the response or create the file |
 
 3. **Spawn generator** to apply the targeted fix. The generator prompt must include:
-   - The specific failure from the evaluator report.
-   - The category and auto-fix strategy.
+   - The structured failure JSON from `specs/reviews/eval-failures-NNN.json` (see evaluator agent for schema).
+   - The category and auto-fix strategy from the table above.
    - All learned rules.
    - Instruction to fix ONLY the failing issue — no other changes.
+   - **Accumulated `prior_attempts`:** On attempt 2, include attempt 1's fix description and result. On attempt 3, include both. This prevents the generator from re-trying the same fix.
+
+   **Error type to fix strategy mapping:**
+
+   | error_type | Strategy |
+   |-----------|----------|
+   | `lint_format` | Run auto-fix tools (`ruff check --fix`, `eslint --fix`) |
+   | `type_error` | Fix annotation at file:line from stack trace |
+   | `import_error` | Check module path, fix import statement |
+   | `key_error` | Check data shape at source — log incoming data, fix accessor |
+   | `timeout` | Check if service is started, increase timeout, add retry |
+   | `connection_refused` | Verify service URL in config, check port mapping |
+   | `validation_error` | Compare request/response against schema, fix model |
+   | `assertion_error` | Read test assertion, compare expected vs actual, fix logic |
+   | `api_transient` | Retry evaluator check once (code may be correct, API was flaky). If retry passes, do not count as a self-heal attempt. |
+   | `api_permanent` | Fix wrapper error handling or request format |
 
 4. **Re-run the failed gate** (not all gates — just the one that failed).
 
@@ -283,54 +306,67 @@ Do not immediately revert. Attempt targeted self-healing first.
 
 ---
 
-## SECTION 7: Docker Stack Management
+## SECTION 7: App Lifecycle Management
 
-`/auto` is responsible for the Docker stack lifecycle. The evaluator does NOT start or stop Docker.
+`/auto` is responsible for starting and stopping the application. The evaluator does NOT manage the app lifecycle.
 
-### Startup
+Read `verification.mode` from `project-manifest.json`. Default: `docker`.
 
-Before the first evaluator check (Gate 5) of the entire `/auto` run:
+### Mode: docker (default)
 
-```bash
-bash init.sh
-```
+**Startup:**
+1. Run `bash init.sh` before first evaluator check
+2. Run health-check retry loop (see evaluator agent for protocol)
+3. If health check fails: FAIL the current group, log to failures.md
 
-Then verify the stack is healthy:
-
-```bash
-curl --retry 10 --retry-delay 3 --retry-all-errors -sf http://localhost:8000/health
-```
-
-If the health check fails after all retries, record a Docker failure and enter self-healing.
-
-### Between Groups
-
-The Docker stack stays running between groups. After each group's code changes, run incremental rebuilds as needed:
-
+**Between Groups:**
 ```bash
 docker compose up -d --build
 ```
+Wait for health check before handing off to evaluator.
 
-Wait for the health check to pass before running the evaluator.
-
-### Worktree Isolation (recommended for parallel execution)
-
-When running multiple groups concurrently or when the generator and evaluator need isolation:
-1. Use Claude Code's `--worktree` isolation flag when spawning evaluator agents
-2. Each worktree gets its own Docker stack on different ports
-3. Configure via `project-manifest.json` port overrides
-4. Teardown worktree Docker stack after evaluation completes
-
-This prevents the generator and evaluator from interfering with each other's state.
-For sequential execution (default), a shared Docker stack is fine.
-
-### Teardown
-
-On completion (all groups done or stopping criteria met):
-
+**Teardown:**
 ```bash
 docker compose down -v
 ```
+
+**Error Context:** `docker compose logs --tail=50 {service_name}`
+
+### Mode: local
+
+**Startup:**
+1. Read `verification.local.start_commands` from manifest
+2. Start each command as a background process, capture stdout/stderr to `.claude/state/process-{name}.log`
+3. Run health-check retry loop against configured URLs
+
+**Between Groups:** Kill and restart processes (re-run start commands).
+
+**Teardown:** Kill all background processes started by the orchestrator.
+
+**Error Context:** Read from `.claude/state/process-{name}.log`
+
+### Mode: stub
+
+**Startup:**
+1. Read `verification.stub.schema_source` from manifest
+2. Generator creates a lightweight mock server (FastAPI or Express) that serves schema-valid example responses for every endpoint in the schema
+3. Start the mock server on a free port
+4. Run health-check retry loop
+
+**Between Groups:** Regenerate mock server if schema has been amended (check `specs/design/amendments/`).
+
+**Teardown:** Kill mock server process.
+
+**Error Context:** Stub mismatch reports — when a request doesn't match any endpoint in the schema, log the requested path and method.
+
+**Stub mode limitations:** Layer 1 checks validate request/response shapes but cannot verify business logic. Layer 2 (Playwright) skipped unless a separate frontend URL is configured.
+
+### Worktree Isolation (All Modes)
+
+When using `--worktree` flag, each worktree gets its own app instance:
+- Docker mode: different port mappings (configured via `project-manifest.json`)
+- Local mode: different port arguments in start commands
+- Stub mode: different mock server port (auto-selected)
 
 ---
 
@@ -351,42 +387,42 @@ Amendments are a signal that the implementation discovered a design gap. They mu
 
 ## SECTION 9: GAN Design Loop (Frontend Groups Only, Full Mode)
 
-After the main ratchet gate passes, if the current group contains UI stories (stories with `playwright_checks` or `design_checks` in the sprint contract):
+Read `calibration-profile.json` for all scoring and iteration parameters. Fall back to defaults if file does not exist.
 
-### Iteration Loop
+### Configuration
 
-- **Full mode:** Max 10 iterations
-- **Lean mode:** N/A (no design critic)
+| Parameter | Source | Default |
+|-----------|--------|---------|
+| Scoring weights | `calibration-profile.json` → `scoring.weights` | DQ=1.5, O=1.5, C=0.75, F=0.75 |
+| Pass threshold | `calibration-profile.json` → `scoring.threshold` | 7 |
+| Per-criterion minimum | `calibration-profile.json` → `scoring.per_criterion_minimum` | 5 |
+| Max iterations | `calibration-profile.json` → `iteration.max_iterations` | 10 |
+| Plateau window | `calibration-profile.json` → `iteration.plateau_window` | 3 |
+| Plateau delta | `calibration-profile.json` → `iteration.plateau_delta` | 0.3 |
+| Pivot on plateau | `calibration-profile.json` → `iteration.pivot_after_plateau` | true |
 
-1. **Spawn design-critic:** Navigate to each page listed in the contract's `design_checks`. Take screenshots. Score visual fidelity, layout consistency, spacing, color token usage, and responsive behavior. Return scores and critique text per page.
+### Loop
 
-2. **Check threshold:** If the average score across all pages meets or exceeds the threshold defined in `project-manifest.json` field `design_score_threshold` (default: 7/10), the GAN loop passes. Proceed to PASS handling.
+For each frontend page in the current group:
 
-3. **Below threshold — send critique to generator:** Spawn generator with:
-   - The design-critic's scores and critique text for each page.
-   - The specific UI components that need improvement.
-   - The design tokens and layout specifications from `specs/design/`.
-   - All learned rules.
+1. **Screenshot** — Take screenshots of the page at 1280px and 375px widths using Playwright
+2. **Score** — Spawn design-critic agent with screenshots + calibration profile
+3. **Check threshold** — weighted average >= threshold AND all criteria >= per_criterion_minimum
+4. **If PASS** — Record score to `specs/reviews/eval-scores.json`, continue to next page
+5. **If FAIL** — Send critique to generator, generator iterates on UI code
 
-#### Refine vs. Pivot Decision
+### Plateau Detection
 
-Track the average score across iterations. If the score has NOT improved for 2 consecutive iterations:
-- Instruct the generator: "Your current aesthetic direction is not working. Do NOT make incremental tweaks. Instead, pivot to a fundamentally different visual approach — different color palette, different layout structure, different typography choices."
-- This forces the generator to escape local minima rather than polishing a mediocre design.
+After each iteration, check the last `plateau_window` weighted scores:
+- If `max(recent) - min(recent) < plateau_delta`: scores have plateaued
+- If `pivot_after_plateau` is true: instruct generator to make a fundamental change (different palette, layout, or typography) — not incremental tweaks
+- If false: log warning, continue with incremental critique
 
-If the score IS trending upward (even slowly), continue refining the current direction.
+### Termination
 
-4. **Generator iterates on UI code.** The generator edits only the frontend files flagged by the critic.
-
-5. **Re-screenshot, re-score.** Spawn design-critic again on the updated pages.
-
-6. **Repeat** up to 10 total iterations (Full mode).
-
-7. **10th iteration still below threshold:**
-   - Log the failure to `.claude/state/failures.md` with all 10 iteration scores and critiques.
-   - Extract a learned rule (see SECTION 12).
-   - Escalate to the user: "Design quality for group {group} did not reach threshold after 10 GAN iterations. Scores: [list]. Proceeding to next group."
-   - Do NOT revert the code — the ratchet gate already passed. The design issue is cosmetic, not functional.
+- Score meets threshold → PASS, move to next page
+- `max_iterations` reached → log to `failures.md`, extract learned rule, escalate to user. Do NOT revert (ratchet gate already passed for functional checks).
+- Lean/Solo/Turbo modes: skip this section entirely
 
 ---
 
