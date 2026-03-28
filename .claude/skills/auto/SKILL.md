@@ -524,10 +524,27 @@ Append to `.claude/state/learned-rules.md`:
 ## Rule {N}: {descriptive title}
 
 - **Source:** Group {group}, Story {story}, Iteration {iter}
+- **Impact:** {quantified damage — e.g., "test coverage dropped 18%", "deployment failed", "3 iterations wasted"}
 - **Pattern:** {what went wrong — the repeated error signature}
+
+### Mistake
+{description of what happened and why it failed}
+
+### Anti-Pattern (Avoid This)
+\`\`\`{language}
+{code example showing the bad pattern — actual code from the failure}
+\`\`\`
+
+### Better Approach
+\`\`\`{language}
+{code example showing the correct pattern — the fix that resolved it}
+\`\`\`
+
 - **Rule:** {the concrete instruction to prevent recurrence}
 - **Applied in:** {list of agents/skills that must follow this rule}
 ```
+
+Include code examples whenever the mistake involves a code pattern. For non-code mistakes (e.g., wrong deployment sequence), describe the steps instead of code blocks. Always quantify impact — agents prioritize rules with higher impact.
 
 ### Injection
 
