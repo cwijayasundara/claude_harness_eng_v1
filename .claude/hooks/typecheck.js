@@ -33,12 +33,29 @@ try {
 
   const typechecker = manifest && manifest.typechecker ? manifest.typechecker : null;
 
+  // Detect subdirectory (frontend/, backend/) to set correct cwd for config discovery
+  function detectCwd(fp) {
+    const normalized = fp.replace(/\\/g, '/');
+    const subdirs = ['frontend', 'backend'];
+    for (const dir of subdirs) {
+      const marker = `/${dir}/`;
+      const idx = normalized.indexOf(marker);
+      if (idx !== -1) {
+        const candidate = normalized.substring(0, idx + marker.length - 1);
+        return candidate;
+      }
+    }
+    return process.cwd();
+  }
+
+  const cwd = detectCwd(filePath);
+
   if (isPython) {
     const useChecker = typechecker ? typechecker === 'mypy' : true; // fallback: use mypy
     if (useChecker) {
       const result = spawnSync('sh', ['-c', `uv run mypy "${filePath}"`], {
         encoding: 'utf8',
-        shell: false,
+        cwd,
       });
       if (result.status !== 0) {
         const output = (result.stdout || '') + (result.stderr || '');
@@ -50,7 +67,7 @@ try {
     if (useChecker) {
       const result = spawnSync('sh', ['-c', 'npx tsc --noEmit'], {
         encoding: 'utf8',
-        shell: false,
+        cwd,
       });
       if (result.status !== 0) {
         const output = (result.stdout || '') + (result.stderr || '');

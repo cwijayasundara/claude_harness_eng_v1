@@ -33,12 +33,27 @@ try {
 
   const linter = manifest && manifest.linter ? manifest.linter : null;
 
+  // Detect subdirectory (frontend/, backend/) to set correct cwd for config discovery
+  function detectCwd(fp) {
+    const normalized = fp.replace(/\\/g, '/');
+    const subdirs = ['frontend', 'backend'];
+    for (const dir of subdirs) {
+      const marker = `/${dir}/`;
+      const idx = normalized.indexOf(marker);
+      if (idx !== -1) {
+        const candidate = normalized.substring(0, idx + marker.length - 1);
+        return candidate;
+      }
+    }
+    return process.cwd();
+  }
+
   if (isPython) {
     const useLinter = linter ? linter === 'ruff' : true; // fallback: use ruff
     if (useLinter) {
       spawnSync('sh', ['-c', `uv run ruff check --fix "${filePath}" && uv run ruff format "${filePath}"`], {
         stdio: 'inherit',
-        shell: false,
+        cwd: detectCwd(filePath),
       });
     }
   } else if (isTypeScript) {
@@ -46,7 +61,7 @@ try {
     if (useLinter) {
       spawnSync('sh', ['-c', `npx eslint --fix "${filePath}"`], {
         stdio: 'inherit',
-        shell: false,
+        cwd: detectCwd(filePath),
       });
     }
   }
