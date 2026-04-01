@@ -110,20 +110,20 @@ if (fs.existsSync(srcDir)) {
   const violations = checkArchitectureViolations(pyFiles);
 
   if (violations.length > 0) {
-    process.stderr.write('Architecture check: FAIL\n');
+    process.stdout.write('Architecture check: FAIL\n');
     for (const v of violations) {
-      process.stderr.write(`  ${v}\n`);
+      process.stdout.write(`  ${v}\n`);
     }
-    process.stderr.write('Fix: Run /review to get specific findings, then fix before proceeding.\n');
+    process.stdout.write('Fix: Run /review to get specific findings, then fix before proceeding.\n');
   } else {
-    process.stderr.write('Architecture check: PASS\n');
+    process.stdout.write('Architecture check: PASS\n');
   }
 } else {
-  process.stderr.write('Architecture check: PASS (no src/ directory found)\n');
+  process.stdout.write('Architecture check: PASS (no src/ directory found)\n');
 }
 
 // Always remind about /review
-process.stderr.write('Run /review before marking phase complete.\n');
+process.stdout.write('Run /review before marking phase complete.\n');
 
 // Non-blocking: always exit 0
 process.exit(0);

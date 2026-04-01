@@ -44,6 +44,10 @@ gh issue comment {n} --body "..."
 
 Do not proceed with a vague issue.
 
+### Step 1.5 — Systematic Debugging with Superpowers
+
+Before writing any fix, invoke `superpowers:systematic-debugging` to diagnose the root cause. This prevents jumping to conclusions and ensures you understand the actual failure mechanism before proposing a solution. The debugging output informs both the failing test (Step 3) and the fix (Step 5).
+
 ### Step 2 — Create a Branch
 
 ```

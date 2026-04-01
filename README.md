@@ -14,6 +14,7 @@ A Claude Code plugin scaffold that implements best practices from [Anthropic](ht
 - **Sprint contracts** — Generator and evaluator negotiate "done" criteria before coding
 - **TDD mandatory** — Tests first, 100% meaningful coverage target, 80% hard floor
 - **Self-healing** — 10 error categories with targeted fixes before reverting
+- **Superpowers integration** — Brainstorming, systematic debugging, TDD, and verification workflows at key pipeline stages
 - **4 execution modes** — Full ($100-300), Lean ($30-80), Solo ($5-15), Turbo ($30-50)
 
 ## Installation
@@ -112,6 +113,35 @@ See `design.md` for full architecture reference (system diagram, agent roles, ho
 | `lint-drift` | Entropy scanner for pattern drift |
 
 > Prefix with `/claude-harness-engine:` when using as a plugin (e.g., `/claude-harness-engine:brd`). Use `/command` shorthand when inside a scaffolded project.
+
+## Superpowers Integration
+
+The harness integrates with the [Superpowers](https://github.com/obra/superpowers) plugin to augment key pipeline stages with structured developer workflows:
+
+| Pipeline Stage | Superpowers Skill | What It Does |
+|---|---|---|
+| `/brd`, `/design` | `brainstorming` | Explores alternatives and hidden assumptions before committing to a direction |
+| `/implement`, `/refactor` | `writing-plans` | Produces structured plans reviewed before code is written |
+| `/implement` (teammates) | `test-driven-development` | Red-green-refactor cycle enforced in every agent prompt |
+| `/fix-issue` | `systematic-debugging` | Root cause analysis before proposing fixes |
+| `/auto` (self-healing) | `systematic-debugging` | Diagnoses failures before each fix attempt |
+| `/auto`, `/evaluate` | `verification-before-completion` | Evidence-based checks before claiming PASS |
+
+Superpowers is enabled automatically when scaffolding a project. The harness works without it, but with it agents explore before committing, debug before fixing, and verify before declaring success.
+
+## Plugins
+
+The scaffold configures these complementary plugins in `.claude/settings.json`:
+
+| Plugin | Purpose | Conflict? |
+|---|---|---|
+| `superpowers` | Developer workflow patterns (TDD, debugging, planning) | No |
+| `code-review` | PR review with confidence scoring | No |
+| `commit-commands` | `/commit`, `/commit-push-pr` git workflows | No |
+| `security-guidance` | Real-time XSS/eval/unsafe-code detection | No |
+| `pr-review-toolkit` | Specialized PR review agents | No |
+
+Plugins that conflict with harness functionality (`feature-dev`, `frontend-design`, `hookify`) are explicitly excluded by `/scaffold`.
 
 ## Requirements
 

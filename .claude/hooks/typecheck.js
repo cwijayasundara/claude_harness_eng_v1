@@ -65,13 +65,25 @@ try {
   } else if (isTypeScript) {
     const useChecker = typechecker ? typechecker === 'tsc' : true; // fallback: use tsc
     if (useChecker) {
-      const result = spawnSync('sh', ['-c', 'npx tsc --noEmit'], {
+      const result = spawnSync('sh', ['-c', `npx tsc --noEmit --pretty "${filePath}"`], {
         encoding: 'utf8',
         cwd,
       });
       if (result.status !== 0) {
-        const output = (result.stdout || '') + (result.stderr || '');
-        process.stdout.write(`Typecheck errors (tsc):\n${output}\nFix: Add type annotations or fix the type mismatch shown above.\n`);
+        // tsc --noEmit with a file arg may not work on all setups; fall back to project-wide
+        const fallback = spawnSync('sh', ['-c', 'npx tsc --noEmit'], {
+          encoding: 'utf8',
+          cwd,
+        });
+        if (fallback.status !== 0) {
+          const output = (fallback.stdout || '') + (fallback.stderr || '');
+          // Filter to only show errors related to the edited file
+          const lines = output.split('\n');
+          const basename = path.basename(filePath);
+          const relevant = lines.filter(l => l.includes(basename) || l.startsWith(' '));
+          const filtered = relevant.length > 0 ? relevant.join('\n') : output;
+          process.stdout.write(`Typecheck errors in ${filePath}:\n${filtered}\nFix: Add type annotations or fix the type mismatch shown above.\n`);
+        }
       }
     }
   }

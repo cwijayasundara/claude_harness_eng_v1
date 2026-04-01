@@ -7,6 +7,15 @@ tools:
   - Glob
   - Grep
   - Bash
+  - mcp__plugin_playwright_playwright__browser_navigate
+  - mcp__plugin_playwright_playwright__browser_click
+  - mcp__plugin_playwright_playwright__browser_fill_form
+  - mcp__plugin_playwright_playwright__browser_snapshot
+  - mcp__plugin_playwright_playwright__browser_take_screenshot
+  - mcp__plugin_playwright_playwright__browser_press_key
+  - mcp__plugin_playwright_playwright__browser_wait_for
+  - mcp__plugin_playwright_playwright__browser_tabs
+  - mcp__plugin_playwright_playwright__browser_close
 ---
 
 # Evaluator Agent
@@ -55,6 +64,8 @@ done
 If health check fails after all retries, return a FAIL verdict with `failure_layer: "infrastructure"` and `failure_reason: "App not reachable at {url} after {retries} attempts"`.
 
 ## Verification Workflow
+
+Invoke `superpowers:verification-before-completion` before emitting any PASS verdict. This ensures you have run all verification commands and confirmed output before claiming success. Evidence before assertions — always.
 
 Read `.claude/skills/evaluate/SKILL.md` for the full three-layer verification workflow, verdict format, and mode behavior. That file is the source of truth for execution steps.
 

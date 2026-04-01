@@ -9,6 +9,7 @@ A GAN-inspired harness combining Karpathy ratcheting + Anthropic/OpenAI harness 
 - Agent teams for parallel story execution
 - Session chaining for multi-context-window builds
 - Three-layer evaluation (API + Playwright + Vision with weighted scoring)
+- Superpowers integration (brainstorming, TDD, debugging, verification at key stages)
 - 4 execution modes: Full, Lean, Solo, Turbo
 
 ## Installation
@@ -49,14 +50,21 @@ A GAN-inspired harness combining Karpathy ratcheting + Anthropic/OpenAI harness 
 | ui-designer | React+Tailwind mockups | Sonnet |
 | test-engineer | Test plans + Playwright E2E | Sonnet |
 
+## Superpowers Integration
+
+The harness integrates with the [Superpowers](https://github.com/obra/superpowers) plugin at these pipeline stages:
+
+| Stage | Skill | Purpose |
+|---|---|---|
+| `/brd`, `/design` | `brainstorming` | Explore alternatives before committing |
+| `/implement`, `/refactor` | `writing-plans` | Structured plans before code |
+| `/implement` (teammates) | `test-driven-development` | Red-green-refactor in every agent |
+| `/fix-issue`, `/auto` (heal) | `systematic-debugging` | Root cause analysis before fixing |
+| `/auto` (done), evaluator | `verification-before-completion` | Evidence before claiming PASS |
+
 ## Key Files
 
 - `.claude/program.md` — Karpathy human-agent bridge (edit to steer /auto)
-- `.claude/settings.json` — Hook config + permissions
-- `.claude/docs/design-spec.md` — Full design specification
-- `.claude/docs/implementation-plan.md` — Implementation plan
-
-## Docs
-
-- `design.md` — Architecture reference (copied to target projects)
+- `.claude/settings.json` — Hook config, permissions, enabled plugins
+- `design.md` — Full architecture reference (copied to target projects)
 - `README.md` — Installation and usage guide

@@ -254,7 +254,7 @@ Do not immediately revert. Attempt targeted self-healing first.
 
 **Attempt 1-3:**
 
-1. **Diagnose:** Read the evaluator report (`specs/reviews/evaluator-report.md`) for specific failure details. Identify the exact check that failed and the error output.
+1. **Diagnose:** Invoke `superpowers:systematic-debugging` to analyze the failure before attempting a fix. This prevents jumping to conclusions and ensures the root cause is identified. Read the evaluator report (`specs/reviews/evaluator-report.md`) for specific failure details. Identify the exact check that failed and the error output.
 
 2. **Classify** the failure into one of 10 categories:
 
@@ -468,7 +468,7 @@ OR logic with priority (check in order):
 
 3. **Coverage gate:** Coverage drops below the baseline AFTER a successful commit. This overrides the pass — revert the commit (`git revert HEAD --no-edit`), log the regression, and re-enter self-healing for coverage.
 
-4. **Success:** All features in `features.json` have `passes: true` AND coverage >= baseline threshold. Print:
+4. **Success:** All features in `features.json` have `passes: true` AND coverage >= baseline threshold. Before claiming completion, invoke `superpowers:verification-before-completion` to run all verification commands and confirm output. Evidence before assertions. Print:
    ```
    === BUILD COMPLETE ===
    Features passing: {N}/{N}

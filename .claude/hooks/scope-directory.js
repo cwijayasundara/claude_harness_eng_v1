@@ -41,7 +41,7 @@ try {
   const projectDir = findProjectDir(scriptDir);
 
   if (!projectDir) {
-    process.stderr.write('BLOCKED: Could not determine project directory (no .claude/ found in ancestors)\n');
+    process.stdout.write('BLOCKED: Could not determine project directory (no .claude/ found in ancestors)\n');
     process.exit(2);
   }
 
@@ -49,7 +49,7 @@ try {
 
   // Ensure the file path is within the project directory
   if (!resolvedFilePath.startsWith(resolvedProject + path.sep) && resolvedFilePath !== resolvedProject) {
-    process.stderr.write(`BLOCKED: Write outside project directory: ${resolvedFilePath}\nFix: Move the file to a location within the project directory or use .claude/ for scaffold files.\n`);
+    process.stdout.write(`BLOCKED: Write outside project directory: ${resolvedFilePath}\nFix: Move the file to a location within the project directory or use .claude/ for scaffold files.\n`);
     process.exit(2);
   }
 } catch (_) {

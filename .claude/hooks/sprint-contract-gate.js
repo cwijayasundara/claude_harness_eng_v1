@@ -72,14 +72,15 @@ try {
   reportContent = fs.readFileSync(reportFile, 'utf8');
 } catch (_) {
   // Report doesn't exist — verdict is not PASS
-  process.stderr.write(
+  process.stdout.write(
     `BLOCKED: Sprint contract for group ${group} not satisfied. Run /evaluate first.\nFix: Run /evaluate to verify the sprint contract, then retry the commit.\n`
   );
   process.exit(2);
 }
 
-if (!reportContent.includes('VERDICT: PASS')) {
-  process.stderr.write(
+// Use anchored regex to match "VERDICT: PASS" at the start of a line, avoiding false matches in comments
+if (!/^VERDICT:\s*PASS\s*$/m.test(reportContent)) {
+  process.stdout.write(
     `BLOCKED: Sprint contract for group ${group} not satisfied. Run /evaluate first.\nFix: Run /evaluate to verify the sprint contract, then retry the commit.\n`
   );
   process.exit(2);

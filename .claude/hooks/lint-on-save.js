@@ -51,18 +51,24 @@ try {
   if (isPython) {
     const useLinter = linter ? linter === 'ruff' : true; // fallback: use ruff
     if (useLinter) {
-      spawnSync('sh', ['-c', `uv run ruff check --fix "${filePath}" && uv run ruff format "${filePath}"`], {
-        stdio: 'inherit',
+      const result = spawnSync('sh', ['-c', `uv run ruff check --fix "${filePath}" && uv run ruff format "${filePath}"`], {
+        encoding: 'utf8',
         cwd: detectCwd(filePath),
       });
+      if (result.status !== 0 && result.stdout) {
+        process.stdout.write(result.stdout);
+      }
     }
   } else if (isTypeScript) {
     const useLinter = linter ? linter === 'eslint' : true; // fallback: use eslint
     if (useLinter) {
-      spawnSync('sh', ['-c', `npx eslint --fix "${filePath}"`], {
-        stdio: 'inherit',
+      const result = spawnSync('sh', ['-c', `npx eslint --fix "${filePath}"`], {
+        encoding: 'utf8',
         cwd: detectCwd(filePath),
       });
+      if (result.status !== 0 && result.stdout) {
+        process.stdout.write(result.stdout);
+      }
     }
   }
 } catch (_) {

@@ -5,6 +5,14 @@ tools:
   - Read
   - Write
   - Bash
+  - mcp__plugin_playwright_playwright__browser_navigate
+  - mcp__plugin_playwright_playwright__browser_click
+  - mcp__plugin_playwright_playwright__browser_snapshot
+  - mcp__plugin_playwright_playwright__browser_take_screenshot
+  - mcp__plugin_playwright_playwright__browser_resize
+  - mcp__plugin_playwright_playwright__browser_hover
+  - mcp__plugin_playwright_playwright__browser_press_key
+  - mcp__plugin_playwright_playwright__browser_close
 ---
 
 # Design Critic Agent

@@ -156,28 +156,45 @@ Before any code is written, the generator and evaluator negotiate a **sprint con
 {
   "group": "C",
   "stories": ["E3-S1", "E3-S2"],
+  "features": ["F005", "F006"],
   "contract": {
     "api_checks": [
       {
+        "id": "api-001",
         "method": "POST",
         "path": "/documents/upload",
-        "expect": { "status": 201, "body_contains": ["document_id"] },
-        "schema_ref": "#/paths/~1documents~1upload/post/response/201"
+        "headers": { "Content-Type": "multipart/form-data" },
+        "expected_status": 201,
+        "expected_body": { "document_id": "string" },
+        "description": "Upload document returns 201 with document_id"
       }
     ],
     "playwright_checks": [
       {
+        "id": "pw-001",
         "description": "Upload document end-to-end",
-        "steps": ["Navigate to /upload", "Upload file", "Click submit", "Verify success"]
+        "url": "/upload",
+        "steps": [
+          { "action": "navigate", "value": "/upload" },
+          { "action": "fill", "selector": "getByLabel('File')", "value": "test.pdf" },
+          { "action": "click", "selector": "getByRole('button', { name: 'Submit' })" },
+          { "action": "assert_visible", "selector": "getByText('Upload successful')" }
+        ]
       }
     ],
     "design_checks": {
-      "pages": ["/upload", "/documents/{id}"],
-      "min_score": 7
+      "visual_hierarchy": { "required": true, "min_score": 7 },
+      "accessibility": { "required": true, "min_score": 5 },
+      "responsiveness": { "required": true, "min_score": 7 },
+      "interaction_feedback": { "required": true, "min_score": 5 }
     },
+    "performance_checks": [
+      { "endpoint": "/documents/upload", "max_response_time_ms": 2000, "method": "POST" }
+    ],
     "architecture_checks": {
-      "files_must_exist": ["backend/src/api/upload_router.py"],
-      "schema_validation": true
+      "layering": { "required": true, "description": "No upward imports" },
+      "typing": { "required": true, "description": "All functions annotated" },
+      "folder_structure": { "required": true, "description": "Files match component-map" }
     }
   }
 }
@@ -482,30 +499,74 @@ Complemented by official `security-guidance` plugin for real-time XSS/eval/unsaf
 
 ---
 
-## 11. Pipeline Commands
+## 11. Superpowers Integration
 
-| Command | Purpose | Human Gate? |
-|---------|---------|-------------|
-| `/brd` | Socratic interview -> BRD | Yes |
-| `/spec` | BRD -> stories + dependency graph + features.json | Yes |
-| `/design` | Architecture + schemas + mockups | Yes |
-| `/implement` | Code generation with agent teams | No |
-| `/evaluate` | Run app, verify sprint contract | No |
-| `/review` | Evaluator + security review | No |
-| `/test` | Test plan + Playwright E2E generation | No |
-| `/deploy` | Docker Compose + init.sh | No |
-| `/build` | Full 8-phase pipeline | Phases 1-3 |
-| `/auto` | Autonomous ratcheting loop | No (reads program.md) |
-| `/fix-issue` | GitHub issue workflow | No |
-| `/refactor` | Quality-driven refactoring | No |
-| `/improve` | Feature enhancement | No |
-| `/lint-drift` | Entropy scanner for pattern drift | No |
+The harness integrates with the [Superpowers](https://github.com/obra/superpowers) plugin (by Jesse Vincent) to augment key pipeline stages with proven developer workflow patterns.
+
+### What Superpowers Adds
+
+Superpowers provides 14 skills focused on developer discipline — brainstorming, planning, TDD, debugging, verification, and code review workflows. These complement the harness's SDLC pipeline by adding structured thinking at critical decision points.
+
+### Integration Points
+
+| Pipeline Stage | Superpowers Skill | Purpose |
+|---|---|---|
+| `/brd` (Step 0) | `superpowers:brainstorming` | Explore user intent and hidden assumptions before the Socratic interview |
+| `/design` (Step 0) | `superpowers:brainstorming` | Evaluate architectural trade-offs before committing to a design |
+| `/implement` (Step 0) | `superpowers:writing-plans` | Produce structured implementation plan before spawning agent teams |
+| `/implement` (teammates) | `superpowers:test-driven-development` | Red-green-refactor cycle enforced in every teammate prompt |
+| `/fix-issue` (Step 1.5) | `superpowers:systematic-debugging` | Root cause analysis before writing failing test |
+| `/refactor` (Step 4) | `superpowers:writing-plans` | Structured refactoring plan before execution |
+| `/auto` (self-healing) | `superpowers:systematic-debugging` | Diagnose failure root cause before each fix attempt |
+| `/auto` (completion) | `superpowers:verification-before-completion` | Evidence-based verification before claiming build complete |
+| evaluator agent | `superpowers:verification-before-completion` | Run all checks and confirm output before emitting PASS verdict |
+| generator agent | `superpowers:test-driven-development` | TDD workflow invoked before writing implementation code |
+
+### How It Works
+
+Superpowers is enabled as a plugin in `.claude/settings.json`:
+
+```json
+"enabledPlugins": {
+  "superpowers@claude-plugins-official": true
+}
+```
+
+Each integration point invokes the superpowers skill by name (e.g., `superpowers:brainstorming`). The skill's output feeds into the next pipeline step — it augments the workflow, not replaces it. For example, brainstorming output feeds into the BRD interview, not bypasses it.
+
+### Design Rationale
+
+The harness handles **what** to build (SDLC pipeline, sprint contracts, ratchet gates). Superpowers handles **how** to think about building it (structured exploration, disciplined debugging, verification discipline). The two systems are complementary:
+
+- **Without superpowers:** The harness still works. Agents follow skill instructions directly.
+- **With superpowers:** Agents explore alternatives before committing, debug systematically before fixing, and verify evidence before claiming success. This reduces wasted self-healing iterations and improves first-pass quality.
+
+---
+
+## 12. Pipeline Commands
+
+| Command | Purpose | Human Gate? | Superpowers |
+|---------|---------|-------------|-------------|
+| `/brd` | Socratic interview -> BRD | Yes | brainstorming |
+| `/spec` | BRD -> stories + dependency graph + features.json | Yes | — |
+| `/design` | Architecture + schemas + mockups | Yes | brainstorming |
+| `/implement` | Code generation with agent teams | No | writing-plans, TDD |
+| `/evaluate` | Run app, verify sprint contract | No | verification |
+| `/review` | Evaluator + security review | No | — |
+| `/test` | Test plan + Playwright E2E generation | No | — |
+| `/deploy` | Docker Compose + init.sh | No | — |
+| `/build` | Full 8-phase pipeline | Phases 1-3 | verification |
+| `/auto` | Autonomous ratcheting loop | No (reads program.md) | debugging, verification |
+| `/fix-issue` | GitHub issue workflow | No | systematic-debugging |
+| `/refactor` | Quality-driven refactoring | No | writing-plans |
+| `/improve` | Feature enhancement | No | — |
+| `/lint-drift` | Entropy scanner for pattern drift | No | — |
 
 Phases 1-3 (`/brd`, `/spec`, `/design`) require human approval. Phases 4-8 run autonomously via `/auto`.
 
 ---
 
-## 12. Quality Principles
+## 13. Quality Principles
 
 Detailed rules in `.claude/skills/code-gen/SKILL.md`. Summary:
 

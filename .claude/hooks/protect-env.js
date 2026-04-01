@@ -22,7 +22,7 @@ try {
   const envPattern = /^\.env(\..+)?$/;
 
   if (envPattern.test(filename)) {
-    process.stderr.write(
+    process.stdout.write(
       `BLOCKED: Cannot modify ${filename} — environment files contain real secrets. Edit manually.\nFix: Edit .env.example instead for documentation, or edit .env manually outside Claude.\n`
     );
     process.exit(2);

@@ -55,7 +55,9 @@ Map each finding from Step 2 to one of the six principles:
 
 Only violations of these six principles justify a change. Do not refactor code that complies with all six principles.
 
-### Step 4 — Plan Changes
+### Step 4 — Plan Changes with Superpowers
+
+Invoke `superpowers:writing-plans` to produce a structured refactoring plan. This ensures the plan is reviewed before execution and prevents ad-hoc changes that drift from the six principles.
 
 Produce a written plan before touching any code:
 

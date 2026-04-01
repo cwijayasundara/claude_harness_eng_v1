@@ -29,7 +29,7 @@ The autonomous `/auto` loop terminates when any of the following conditions are 
 | 3 consecutive failures | The same error category fails 3 times in a row without progress |
 | Architecture violation | A layer dependency violation is detected and cannot be auto-fixed |
 | Coverage below threshold | Test coverage drops below the project baseline and cannot be recovered in one iteration |
-| Max iterations | The configured maximum iteration count is reached (default: 20) |
+| Max iterations | The configured maximum iteration count is reached (default: 50, configured in project-manifest.json) |
 
 ## Self-Healing Policy
 

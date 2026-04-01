@@ -25,6 +25,10 @@ This is the first gate in the SDLC pipeline. Before any code is written, the pla
 
 ## Steps
 
+### Step 0 — Brainstorm with Superpowers
+
+Before beginning the interview, invoke `superpowers:brainstorming` to explore the user's intent, requirements, and design space. This surfaces hidden assumptions and alternative framings before the structured Socratic interview locks in a direction. The brainstorming output feeds into the interview — it does not replace it.
+
 ### Step 1 — Analyze Existing Codebase (if any)
 
 Before beginning the interview, scan the working directory for existing code. Note:

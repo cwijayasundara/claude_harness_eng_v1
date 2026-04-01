@@ -324,8 +324,8 @@ Planner   Generator  Evaluator  Test Eng  Security Rev
 |------------------|-------------------------------|----------------------------------------|
 | Planner          | `.claude/agents/planner.md`   | Sprint planning, story breakdown       |
 | Generator        | `.claude/agents/generator.md` | Feature implementation                 |
-| Evaluator        | `.claude/agents/evaluator.md` | Design scoring (Karpathy loop)         |
-| Design Critic    | `.claude/agents/design-critic.md` | Design quality review              |
+| Evaluator        | `.claude/agents/evaluator.md` | API + Playwright verification          |
+| Design Critic    | `.claude/agents/design-critic.md` | Design scoring (Karpathy loop)     |
 | UI Designer      | `.claude/agents/ui-designer.md`   | Mockups, design tokens             |
 | Test Engineer    | `.claude/agents/test-engineer.md` | Test authoring and execution       |
 | Security Reviewer| `.claude/agents/security-reviewer.md` | Vulnerability auditing         |

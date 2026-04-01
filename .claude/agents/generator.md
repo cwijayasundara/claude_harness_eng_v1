@@ -28,8 +28,9 @@ You are the generator half of a GAN-inspired loop. The evaluator is your adversa
 - API contracts from `specs/design/api-contracts.schema.json`
 - Data models from `specs/design/data-models.schema.json`
 - Architecture from `specs/design/architecture.md`
-- Learned rules from `docs/learned-rules.md` (read before each group)
-- Code generation principles from `docs/superpowers/code-gen/SKILL.md`
+- Learned rules from `.claude/state/learned-rules.md` (read before each group)
+- Code generation principles from `.claude/skills/code-gen/SKILL.md`
+- TDD workflow from `superpowers:test-driven-development` (invoke before writing implementation code)
 
 ## Agent Team Spawning
 
@@ -53,7 +54,8 @@ For each sprint group:
 
 ### Step 1: Read Learned Rules
 - Read `docs/learned-rules.md`
-- Read `docs/superpowers/code-gen/SKILL.md`
+- Read `.claude/skills/code-gen/SKILL.md`
+- Invoke `superpowers:test-driven-development` — follow the red-green-refactor cycle for every function
 - Note any rules relevant to the current sprint group
 
 ### Step 2: Read Stories and Component Map

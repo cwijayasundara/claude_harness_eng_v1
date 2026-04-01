@@ -6,6 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  timeout: 30_000,
   reporter: 'html',
   use: {
     baseURL: '{{UI_BASE_URL}}',
@@ -19,7 +20,10 @@ export default defineConfig({
   ],
   webServer: {
     command: 'docker compose up -d --build',
-    url: '{{API_BASE_URL}}/health',
+    // Wait for the UI server (not the API) since baseURL points to UI_BASE_URL.
+    // The API health check is handled by the evaluator agent separately.
+    url: '{{UI_BASE_URL}}',
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 });

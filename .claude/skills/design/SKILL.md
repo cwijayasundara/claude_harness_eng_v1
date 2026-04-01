@@ -28,6 +28,10 @@ This is the third gate in the SDLC pipeline. Two agents run concurrently in a si
 
 ---
 
+## Step 0 — Brainstorm Architecture Direction
+
+Before spawning agents, invoke `superpowers:brainstorming` to explore architectural trade-offs, technology choices, and design alternatives. This prevents the planner from committing to the first viable architecture without considering alternatives. Feed the brainstorming output into the planner agent's prompt.
+
 ## Step 1 — Spawn Two Agents Concurrently
 
 In a single message, invoke both agents using the Agent tool. Do not wait for the planner to finish before starting the ui-designer.

@@ -3,7 +3,7 @@
   "title": "SprintContract",
   "description": "Schema for a sprint evaluation contract",
   "type": "object",
-  "required": ["group", "stories", "contract"],
+  "required": ["group", "stories", "features", "contract"],
   "additionalProperties": false,
   "properties": {
     "group": {
@@ -13,6 +13,12 @@
     "stories": {
       "type": "array",
       "description": "User story IDs delivered in this sprint",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "features": {
+      "type": "array",
+      "description": "Feature IDs from features.json that this group satisfies. Used by evaluator to update features.json pass/fail state.",
       "items": { "type": "string" },
       "minItems": 1
     },

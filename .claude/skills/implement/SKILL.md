@@ -37,6 +37,10 @@ If any prerequisite is missing, stop and report what is absent. Do not proceed w
 
 ## Execution Steps
 
+### Step 0 — Write Implementation Plan with Superpowers
+
+Before loading code or spawning agents, invoke `superpowers:writing-plans` to produce a structured implementation plan for this group. The plan identifies task decomposition, dependencies, and risk areas. This feeds into the teammate spawn prompts and prevents ad-hoc implementation.
+
 ### Step 1 — Load Quality Principles
 
 Read `.claude/skills/code-gen/SKILL.md` in full. These six principles (small modules, static typing, functions under 50 lines, explicit error handling, no dead code, self-documenting names) apply to every line of code produced. Inject the full text into every teammate prompt.
@@ -73,6 +77,7 @@ If the group contains **2 or more stories**, spawn a Claude Code agent team:
   - The file ownership list from component-map.md for that story.
   - All learned rules from `.claude/state/learned-rules.md`.
   - All six quality principles from `.claude/skills/code-gen/SKILL.md`.
+  - Instruction to follow `superpowers:test-driven-development` — write failing tests before implementation code (red-green-refactor cycle).
   - Instruction to **message teammates** before modifying any shared type or interface file.
   - Instruction to **await plan approval** before writing any code (present the plan, wait for confirmation).
 
