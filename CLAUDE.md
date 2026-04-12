@@ -62,6 +62,33 @@ The harness integrates with the [Superpowers](https://github.com/obra/superpower
 | `/fix-issue`, `/auto` (heal) | `systematic-debugging` | Root cause analysis before fixing |
 | `/auto` (done), evaluator | `verification-before-completion` | Evidence before claiming PASS |
 
+## Coding Principles (Karpathy Guidelines)
+
+These behavioral rules apply to all code generation — in agents, skills, and direct responses.
+
+### 1. Think Before Coding
+- State assumptions explicitly. If uncertain, ask — don't guess.
+- When a request is ambiguous, present multiple interpretations and let the user choose.
+- Push back on unnecessary complexity. "Do you actually need X, or is Y sufficient?"
+
+### 2. Simplicity First
+- Minimum code that solves the stated problem. Nothing speculative.
+- No unrequested features, single-use abstractions, premature flexibility, or speculative error handling.
+- The bar: would an experienced engineer consider this overcomplicated?
+
+### 3. Surgical Changes
+- Modify only what the request requires. Don't "improve" adjacent code, comments, or formatting.
+- Match existing style conventions in the file being edited.
+- When your changes orphan imports or variables, remove only what *your* changes made unused — not pre-existing dead code.
+- Every altered line must trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+- Transform vague goals into verifiable success criteria before writing code.
+- "Add validation" → "Write tests for invalid inputs, then make them pass."
+- Plan multi-step work with clear checkpoints. Loop toward measurable outcomes.
+
+> These guidelines bias toward caution over speed. Success = fewer unnecessary diffs, simpler code on first attempt, clarifying questions before implementation.
+
 ## Key Files
 
 - `.claude/program.md` — Karpathy human-agent bridge (edit to steer /auto)
